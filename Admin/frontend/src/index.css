@@ -1,0 +1,53 @@
+/* src/index.css */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  background: #F0F4FA;
+  font-family: 'DM Sans', sans-serif;
+  color: #0D1B2E;
+  overflow-x: hidden;
+}
+
+/* Scrollbar personalizado */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(2, 60, 129, 0.04);
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(2, 60, 129, 0.18);
+  border-radius: 99px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(2, 60, 129, 0.32);
+}
+
+/* MUI DataGrid column header sort icons */
+.MuiDataGrid-columnHeader .MuiDataGrid-sortIcon {
+  color: rgba(255,255,255,0.7) !important;
+}
+.MuiDataGrid-columnHeader .MuiDataGrid-menuIcon button {
+  color: rgba(255,255,255,0.7) !important;
+}
+.MuiDataGrid-columnSeparator {
+  color: rgba(255,255,255,0.2) !important;
+}
+
+/* Transiciones suaves globales */
+.MuiCard-root,
+.MuiButton-root,
+.MuiChip-root {
+  transition: all 0.18s ease !important;
+}
