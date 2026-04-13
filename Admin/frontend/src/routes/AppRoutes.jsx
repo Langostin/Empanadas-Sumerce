@@ -5,20 +5,38 @@ import AppLayout         from "../components/Layout/AppLayout";
 import LoginView         from "../views/Auth/LoginView";
 import ResetPasswordView from "../views/Auth/ResetPasswordView";
 import SinAccesoView     from "../views/Auth/SinAccesoView";
+
 import DashboardView     from "../views/Dashboard/DashboardView";
 import ClientesView      from "../views/Clientes/ClientesView";
 import EmpleadosView     from "../views/Empleados/EmpleadosView";
 import PedidosView       from "../views/Pedidos/PedidosView";
 
+import OrdenesCocinaView   from "../views/Cocina/OrdenesCocinaView";
+import InventarioView      from "../views/Cocina/InventarioView";
+import EmpaqueView         from "../views/Cocina/EmpaqueView";
+import RutaView            from "../views/Cocina/RutaView";
+import ProveedoresView     from "../views/Cocina/ProveedoresView";
+import MermasView          from "../views/Cocina/MermasView";
+
+import RutaRepartidorView from "../views/Repartidor/RutaRepartidorView";
+import ConfirmarView from "../views/Repartidor/ConfirmarView";
+import MapaView from "../views/Repartidor/MapaView";
+import GastosView from "../views/Repartidor/GastosView";
+import HistorialView from "../views/Repartidor/HistorialView";
+import EscanearView from "../views/Repartidor/EscanearView";
+
+
+
 export default function AppRoutes() {
   return (
     <Routes>
+
       {/* ── Rutas públicas ─────────────────────── */}
       <Route path="/login"          element={<LoginView />} />
       <Route path="/reset-password" element={<ResetPasswordView />} />
       <Route path="/sin-acceso"     element={<SinAccesoView />} />
 
-      {/* ── Panel de administrador ─────────────── */}
+      {/* ── ADMIN ─────────────────────────────── */}
       <Route
         element={
           <ProtectedRoute roles={["administrador"]}>
@@ -32,31 +50,47 @@ export default function AppRoutes() {
         <Route path="/pedidos"   element={<PedidosView />} />
       </Route>
 
-      {/* ── Rutas de otros roles (placeholders) ── */}
-      {/* Cocina y repartidor: protegidas pero aún sin vista */}
+      {/* ── COCINA ────────────────────────────── */}
       <Route
-        path="/cocina"
         element={
           <ProtectedRoute roles={["cocina", "administrador"]}>
-            <div style={{ padding: 40, fontFamily: "Syne,sans-serif" }}>
-              🍳 Panel de Cocina — próximamente
-            </div>
+            <AppLayout />
           </ProtectedRoute>
         }
-      />
+      >
+        <Route path="/cocina" element={<Navigate to="/cocina/ordenes" replace />} />
+
+        <Route path="/cocina/ordenes" element={<OrdenesCocinaView/>} />
+        <Route path="/cocina/inventario" element={<InventarioView />} />
+        <Route path="/cocina/empaque" element={<EmpaqueView />} />
+        <Route path="/cocina/ruta" element={<RutaView />} />
+        <Route path="/cocina/proveedores" element={<ProveedoresView />} />
+        <Route path="/cocina/mermas" element={<MermasView />} />
+      </Route>
+
+      {/* ── REPARTIDOR ────────────────────────── */}
       <Route
-        path="/repartidor"
         element={
           <ProtectedRoute roles={["repartidor", "administrador"]}>
-            <div style={{ padding: 40, fontFamily: "Syne,sans-serif" }}>
-              🚚 Panel de Repartidor — próximamente
-            </div>
+            <AppLayout />
           </ProtectedRoute>
         }
-      />
+      >
+        {/* Redirect principal */}
+        <Route path="/repartidor" element={<Navigate to="/repartidor/ruta" replace />} />
 
-      {/* Fallback */}
+        {/* Vistas */}
+          <Route path="/repartidor/escanear" element={<EscanearView />} />
+          <Route path="/repartidor/ruta" element={<RutaRepartidorView />} />
+          <Route path="/repartidor/confirmar" element={<ConfirmarView />} />
+          <Route path="/repartidor/mapa" element={<MapaView />} />
+          <Route path="/repartidor/gastos" element={<GastosView />} />
+          <Route path="/repartidor/historial" element={<HistorialView />} />
+      </Route>
+
+      {/* ── Fallback ─────────────────────────── */}
       <Route path="*" element={<Navigate to="/" replace />} />
+
     </Routes>
   );
 }

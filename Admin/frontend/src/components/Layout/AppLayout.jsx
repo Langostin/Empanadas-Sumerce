@@ -52,7 +52,11 @@ export default function AppLayout() {
 
   return (
     <Box sx={{ display: "flex", minHeight: "100vh", background: "#F0F4FA" }}>
-      <Sidebar open={sidebarOpen} onToggle={() => setSidebarOpen(o => !o)} />
+        <Sidebar 
+          open={sidebarOpen} 
+          onToggle={() => setSidebarOpen(o => !o)} 
+          rol={user?.rol}
+        />
 
       <Box sx={{ flexGrow: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
 
