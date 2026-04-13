@@ -6,7 +6,7 @@ const dbConfig = {
   user:     process.env.DB_USER     || "sa",
   password: process.env.DB_PASSWORD || "TuPassword123",
   server:   process.env.DB_SERVER   || "localhost",
-  database: process.env.DB_NAME     || "EmpanadasSumerce",
+  database: process.env.DB_NAME     || "EmpanadasSuMerce",
   port:     parseInt(process.env.DB_PORT || "1433"),
   options:  { encrypt: false, trustServerCertificate: true, enableArithAbort: true },
   pool:     { max: 10, min: 0, idleTimeoutMillis: 30000 },

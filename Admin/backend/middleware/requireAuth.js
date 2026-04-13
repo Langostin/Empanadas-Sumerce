@@ -45,6 +45,7 @@ function requireRole(...roles) {
         code: "FORBIDDEN",
       });
     }
+    
     next();
   };
 }

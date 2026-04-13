@@ -7,7 +7,8 @@ export default function SinAccesoView() {
   const { user } = useAuth();
   const navigate  = useNavigate();
   const dest      = ROL_DEFAULT_ROUTE[user?.rol] || "/login";
-
+console.log("ROL:", user?.rol);
+console.log("ROUTES:", ROL_DEFAULT_ROUTE);
   return (
     <Box
       sx={{
