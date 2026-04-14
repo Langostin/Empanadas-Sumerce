@@ -1,3 +1,5 @@
+import InsumosTab from "./tabs/InsumosTab";
+
 export default function ProveedoresView() {
-  return <h1>👥 Proveedores funcionando</h1>;
+  return <InsumosTab />;
 }
