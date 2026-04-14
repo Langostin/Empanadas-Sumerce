@@ -6,9 +6,11 @@ import {
   Tooltip, Divider, Typography, IconButton
 } from "@mui/material";
 import DashboardIcon    from "@mui/icons-material/SpaceDashboardRounded";
+import InventoryIcon    from "@mui/icons-material/Inventory2Rounded";
 import PeopleIcon       from "@mui/icons-material/PeopleAltRounded";
 import BadgeIcon        from "@mui/icons-material/BadgeRounded";
 import ShoppingBagIcon  from "@mui/icons-material/ShoppingBagRounded";
+import RestaurantIcon   from "@mui/icons-material/RestaurantRounded";
 import MenuIcon         from "@mui/icons-material/MenuRounded";
 import ChevronLeftIcon  from "@mui/icons-material/ChevronLeftRounded";
 
@@ -16,10 +18,12 @@ const DRAWER_OPEN  = 240;
 const DRAWER_CLOSE = 68;
 
 const NAV = [
-  { label: "Dashboard",  path: "/",          icon: <DashboardIcon /> },
-  { label: "Clientes",   path: "/clientes",  icon: <PeopleIcon /> },
-  { label: "Empleados",  path: "/empleados", icon: <BadgeIcon /> },
-  { label: "Pedidos",    path: "/pedidos",   icon: <ShoppingBagIcon /> },
+  { label: "Dashboard",  path: "/",           icon: <DashboardIcon /> },
+  { label: "Clientes",   path: "/clientes",   icon: <PeopleIcon /> },
+  { label: "Empleados",  path: "/empleados",  icon: <BadgeIcon /> },
+  { label: "Pedidos",    path: "/pedidos",    icon: <ShoppingBagIcon /> },
+  { label: "Inventario", path: "/inventario", icon: <InventoryIcon /> },
+  { label: "Cocina",     path: "/cocina",     icon: <RestaurantIcon /> },
 ];
 
 export default function Sidebar({ open, onToggle }) {

@@ -9,7 +9,8 @@ import DashboardView     from "../views/Dashboard/DashboardView";
 import ClientesView      from "../views/Clientes/ClientesView";
 import EmpleadosView     from "../views/Empleados/EmpleadosView";
 import PedidosView       from "../views/Pedidos/PedidosView";
-
+import InventarioView    from "../views/Inventario/InventarioView";
+import CocinaView        from "../views/Cocina/CocinaView";
 export default function AppRoutes() {
   return (
     <Routes>
@@ -26,24 +27,26 @@ export default function AppRoutes() {
           </ProtectedRoute>
         }
       >
-        <Route path="/"          element={<DashboardView />} />
-        <Route path="/clientes"  element={<ClientesView />} />
-        <Route path="/empleados" element={<EmpleadosView />} />
-        <Route path="/pedidos"   element={<PedidosView />} />
+        <Route path="/"           element={<DashboardView />}  />
+        <Route path="/clientes"   element={<ClientesView />}   />
+        <Route path="/empleados"  element={<EmpleadosView />}  />
+        <Route path="/pedidos"    element={<PedidosView />}    />
+        <Route path="/inventario" element={<InventarioView />} />
+      </Route>
+
+      {/* ── Panel de cocina (con layout) ────────── */}
+      <Route
+        element={
+          <ProtectedRoute roles={["cocina", "administrador"]}>
+            <AppLayout />
+          </ProtectedRoute>
+        }
+      >
+        <Route path="/cocina" element={<CocinaView />} />
       </Route>
 
       {/* ── Rutas de otros roles (placeholders) ── */}
-      {/* Cocina y repartidor: protegidas pero aún sin vista */}
-      <Route
-        path="/cocina"
-        element={
-          <ProtectedRoute roles={["cocina", "administrador"]}>
-            <div style={{ padding: 40, fontFamily: "Syne,sans-serif" }}>
-              🍳 Panel de Cocina — próximamente
-            </div>
-          </ProtectedRoute>
-        }
-      />
+      {/* Repartidor: protegida pero aún sin vista */}
       <Route
         path="/repartidor"
         element={

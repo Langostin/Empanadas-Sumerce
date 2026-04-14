@@ -20,6 +20,8 @@ const PAGE_TITLES = {
   "/clientes":   { title: "Gestión de Clientes", subtitle: "Administrar usuarios del bot" },
   "/empleados":  { title: "Gestión de Empleados", subtitle: "Personal del negocio" },
   "/pedidos":    { title: "Pedidos",             subtitle: "Historial y seguimiento" },
+  "/inventario": { title: "Inventario",          subtitle: "Gestión de productos" },
+  "/cocina":     { title: "Panel de Cocina",     subtitle: "Cola de producción y control de insumos" },
 };
 
 const ROL_CHIP_COLORS = {
