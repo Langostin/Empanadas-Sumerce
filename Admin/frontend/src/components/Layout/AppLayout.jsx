@@ -24,6 +24,22 @@ const PAGE_TITLES = {
   "/cocina":     { title: "Panel de Cocina",     subtitle: "Cola de producción y control de insumos" },
 };
 
+const getPageTitle = (path) => {
+  if (PAGE_TITLES[path]) return PAGE_TITLES[path];
+  
+  if (path.startsWith("/cocina")) return { title: "Panel de Cocina", subtitle: "Producción y control" };
+  
+  // Repartidor
+  if (path.startsWith("/repartidor/escanear")) return { title: "Escanear Pedido", subtitle: "Apunta la cámara al código QR del pedido" };
+  if (path.startsWith("/repartidor/ruta")) return { title: "Mis Entregas", subtitle: "Actualizado en tiempo real" };
+  if (path.startsWith("/repartidor/confirmar")) return { title: "Confirmar Entrega", subtitle: "Ingresa el ID del pedido para registrar la entrega" };
+  if (path.startsWith("/repartidor/mapa")) return { title: "Mapa de Entregas", subtitle: "Tus puntos de entrega activos" };
+  if (path.startsWith("/repartidor/gastos")) return { title: "Gastos de Ruta", subtitle: "Registra y consulta tus gastos operativos" };
+  if (path.startsWith("/repartidor/historial")) return { title: "Historial de Entregas", subtitle: "Registro de pedidos entregados" };
+
+  return PAGE_TITLES["/"];
+};
+
 const ROL_CHIP_COLORS = {
   administrador: { bg: alpha("#023C81", 0.10), color: "#023C81" },
   cocina:        { bg: alpha("#FF9800", 0.10), color: "#E65100" },
@@ -39,7 +55,7 @@ export default function AppLayout() {
   const navigate     = useNavigate();
   const { user, logout, displayName, initials } = useAuth();
 
-  const page      = PAGE_TITLES[pathname] || PAGE_TITLES["/"];
+  const page      = getPageTitle(pathname);
   const rolColors = ROL_CHIP_COLORS[user?.rol] || ROL_CHIP_COLORS.administrador;
   const now       = new Date().toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long" });
 
@@ -54,7 +70,7 @@ export default function AppLayout() {
 
   return (
     <Box sx={{ display: "flex", minHeight: "100vh", background: "#F0F4FA" }}>
-      <Sidebar open={sidebarOpen} onToggle={() => setSidebarOpen(o => !o)} />
+      <Sidebar open={sidebarOpen} onToggle={() => setSidebarOpen(o => !o)} rol={user?.rol} />
 
       <Box sx={{ flexGrow: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
 

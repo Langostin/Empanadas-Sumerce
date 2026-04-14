@@ -6,27 +6,53 @@ import {
   Tooltip, Divider, Typography, IconButton
 } from "@mui/material";
 import DashboardIcon    from "@mui/icons-material/SpaceDashboardRounded";
-import InventoryIcon    from "@mui/icons-material/Inventory2Rounded";
 import PeopleIcon       from "@mui/icons-material/PeopleAltRounded";
 import BadgeIcon        from "@mui/icons-material/BadgeRounded";
 import ShoppingBagIcon  from "@mui/icons-material/ShoppingBagRounded";
-import RestaurantIcon   from "@mui/icons-material/RestaurantRounded";
 import MenuIcon         from "@mui/icons-material/MenuRounded";
 import ChevronLeftIcon  from "@mui/icons-material/ChevronLeftRounded";
+import CameraAltIcon from "@mui/icons-material/CameraAlt";
+import TwoWheelerIcon from "@mui/icons-material/TwoWheeler";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import MapIcon from "@mui/icons-material/Map";
+import LocalGasStationIcon from "@mui/icons-material/LocalGasStation";
+import HistoryIcon from "@mui/icons-material/History";
+
+
 
 const DRAWER_OPEN  = 240;
 const DRAWER_CLOSE = 68;
 
-const NAV = [
-  { label: "Dashboard",  path: "/",           icon: <DashboardIcon /> },
-  { label: "Clientes",   path: "/clientes",   icon: <PeopleIcon /> },
-  { label: "Empleados",  path: "/empleados",  icon: <BadgeIcon /> },
-  { label: "Pedidos",    path: "/pedidos",    icon: <ShoppingBagIcon /> },
-  { label: "Inventario", path: "/inventario", icon: <InventoryIcon /> },
-  { label: "Cocina",     path: "/cocina",     icon: <RestaurantIcon /> },
-];
+const NAV_BY_ROLE = {
+  administrador: [
+    { label: "Dashboard",  path: "/",          icon: <DashboardIcon /> },
+    { label: "Clientes",   path: "/clientes",  icon: <PeopleIcon /> },
+    { label: "Empleados",  path: "/empleados", icon: <BadgeIcon /> },
+    { label: "Pedidos",    path: "/pedidos",   icon: <ShoppingBagIcon /> },
+    { label: "Inventario", path: "/inventario",icon: <DashboardIcon /> },
+  ],
 
-export default function Sidebar({ open, onToggle }) {
+  cocina: [
+    { label: "Órdenes en Cola", path: "/cocina/ordenes", icon: <ShoppingBagIcon /> },
+    { label: "Inventario",      path: "/cocina/inventario", icon: <DashboardIcon /> },
+    { label: "Empaque",         path: "/cocina/empaque", icon: <BadgeIcon /> },
+    { label: "Hoja de Ruta",    path: "/cocina/ruta", icon: <PeopleIcon /> },
+    { label: "Proveedores",     path: "/cocina/proveedores", icon: <PeopleIcon /> },
+    { label: "Mermas",          path: "/cocina/mermas", icon: <DashboardIcon /> },
+  ],
+
+repartidor: [
+  { label: "Escanear Pedido", path: "/repartidor/escanear", icon: <CameraAltIcon /> },
+  { label: "Mis Entregas",    path: "/repartidor/ruta",     icon: <TwoWheelerIcon /> },
+  { label: "Confirmar",       path: "/repartidor/confirmar",icon: <CheckCircleIcon /> },
+  { label: "Mapa",            path: "/repartidor/mapa",     icon: <MapIcon /> },
+  { label: "Gastos",          path: "/repartidor/gastos",   icon: <LocalGasStationIcon /> },
+  { label: "Historial",       path: "/repartidor/historial",icon: <HistoryIcon /> },
+]
+};
+
+export default function Sidebar({ open, onToggle, rol }) {
+  const NAV = NAV_BY_ROLE[rol] || [];
   const navigate  = useNavigate();
   const { pathname } = useLocation();
   const theme = useTheme();

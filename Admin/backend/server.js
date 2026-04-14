@@ -7,7 +7,8 @@ require("dotenv").config();
 const { q } = require("./db");
 const authRouter = require("./routes/auth");
 const inventarioRouter = require("./routes/inventario");
-const cocinaRouter = require("./routes/cocina");
+const cocinaRouter      = require("./routes/cocina");
+const repartidorRouter  = require("./routes/repartidor");
 const { requireAuth, requireRole } = require("./middleware/requireAuth");
 
 const app = express();
@@ -25,7 +26,8 @@ app.use("/api", requireAuth);
 // ── Sub-routers protegidos ─────────────────────────────────────
 app.use("/api/inventario", inventarioRouter);
 
-app.use("/api/cocina", cocinaRouter);
+app.use("/api/cocina",      cocinaRouter);
+app.use("/api/repartidor",  repartidorRouter);
 // ══════════════════════════════════════════════════════════════
 //  DASHBOARD
 // ══════════════════════════════════════════════════════════════
