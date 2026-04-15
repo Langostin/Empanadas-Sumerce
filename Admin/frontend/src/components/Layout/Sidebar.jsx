@@ -34,9 +34,7 @@ const NAV_BY_ROLE = {
 
   cocina: [
     { label: "Órdenes en Cola", path: "/cocina/ordenes", icon: <ShoppingBagIcon /> },
-    { label: "Inventario",      path: "/cocina/inventario", icon: <DashboardIcon /> },
-    { label: "Empaque",         path: "/cocina/empaque", icon: <BadgeIcon /> },
-    { label: "Hoja de Ruta",    path: "/cocina/ruta", icon: <PeopleIcon /> },
+    //{ label: "Inventario",      path: "/cocina/inventario", icon: <DashboardIcon /> },
     { label: "Proveedores",     path: "/cocina/proveedores", icon: <PeopleIcon /> },
     { label: "Mermas",          path: "/cocina/mermas", icon: <DashboardIcon /> },
   ],
