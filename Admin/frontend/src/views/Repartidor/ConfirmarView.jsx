@@ -24,7 +24,7 @@ export default function ConfirmarView() {
     setError("");
     setExito(null);
     try {
-      const data = await repartidorService.confirmarEntrega(parseInt(pedidoId));
+      const data = await repartidorService.confirmarEntrega(pedidoId);
       setExito(data);
       setPedidoId("");
     } catch (e) {

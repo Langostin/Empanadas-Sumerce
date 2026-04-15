@@ -25,7 +25,27 @@ async function getPool() {
 async function q(query, params = {}) {
   const p   = await getPool();
   const req = p.request();
-  Object.entries(params).forEach(([k, v]) => req.input(k, v));
+
+  Object.entries(params).forEach(([k, v]) => {
+    // 🔥 SI VIENE CON TYPE (forma pro)
+    if (v && typeof v === "object" && v.type) {
+      req.input(k, v.type, v.value);
+    }
+    // 🔥 AUTO DETECCIÓN SEGURA
+    else if (typeof v === "number") {
+      req.input(k, sql.Int, v);
+    }
+    else if (typeof v === "string") {
+      req.input(k, sql.VarChar, v);
+    }
+    else if (v === null) {
+      req.input(k, sql.VarChar, null);
+    }
+    else {
+      req.input(k, v);
+    }
+  });
+
   return req.query(query);
 }
 
