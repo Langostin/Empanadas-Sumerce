@@ -125,35 +125,103 @@ router.get("/pedidos/:id", kitchenAccess, async (req, res) => {
 // ══════════════════════════════════════════════════════════════
 router.patch("/pedidos/:id/estado", kitchenAccess, async (req, res) => {
   try {
-    const pedidoId   = parseInt(req.params.id);
+    const pedidoId = parseInt(req.params.id);
     const { accion, observaciones } = req.body;
-    // accion: "aceptar" | "listo" | "cancelar"
     const empleadoId = req.user.empleadoId;
 
-    // Mapa de transiciones
     const TRANSICIONES = {
-      aceptar:  { estadoCocina: "en_proceso", estadoPedido: "en_cocina",  setInicio: true },
-      listo:    { estadoCocina: "terminado",  estadoPedido: "listo",      setFin: true },
-      cancelar: { estadoCocina: "cancelado",  estadoPedido: "cancelado",  setFin: true },
+      aceptar: {
+        estadoCocina: "en_proceso",
+        estadoPedido: "en_cocina",
+        setInicio: true,
+      },
+      listo: {
+        estadoCocina: "terminado",
+        estadoPedido: "listo",
+        setFin: true,
+      },
+      cancelar: {
+        estadoCocina: "cancelado",
+        estadoPedido: "cancelado",
+        setFin: true,
+      },
     };
 
     const trans = TRANSICIONES[accion];
-    if (!trans) return res.status(400).json({ error: "Acción inválida. Use: aceptar | listo | cancelar" });
+    if (!trans) {
+      return res.status(400).json({
+        error: "Acción inválida. Use: aceptar | listo | cancelar",
+      });
+    }
 
-    // Construir UPDATE de EstadoCocina
-    const sets   = ["estado = @ec", "empleado_cocina_id = @emp"];
-    const params = { ec: trans.estadoCocina, emp: empleadoId, pid: pedidoId };
+    // -------------------------
+    // UPDATE EstadoCocina
+    // -------------------------
+    const sets = [
+      "estado = @ec",
+      "empleado_cocina_id = @emp",
+    ];
 
-    if (trans.setInicio) { sets.push("fecha_inicio = GETDATE()"); }
-    if (trans.setFin)    { sets.push("fecha_fin = GETDATE()"); }
-    if (observaciones)   { sets.push("observaciones = @obs"); params.obs = observaciones; }
+    const params = {
+      ec: trans.estadoCocina,
+      emp: empleadoId,
+      pid: pedidoId,
+    };
 
-    // Transacción: actualizar cocina + pedido en paralelo
-    await q(`UPDATE EstadoCocina SET ${sets.join(", ")} WHERE pedido_id = @pid`, params);
-    await q(`UPDATE Pedido SET estado_pedido = @ep WHERE pedido_id = @pid`,
-            { ep: trans.estadoPedido, pid: pedidoId });
+    if (trans.setInicio) sets.push("fecha_inicio = GETDATE()");
+    if (trans.setFin) sets.push("fecha_fin = GETDATE()");
+    if (observaciones) {
+      sets.push("observaciones = @obs");
+      params.obs = observaciones;
+    }
 
-    // Log en sistema
+    await q(
+      `UPDATE EstadoCocina SET ${sets.join(", ")} WHERE pedido_id = @pid`,
+      params
+    );
+
+    // -------------------------
+    // UPDATE Pedido
+    // -------------------------
+    await q(
+      `UPDATE Pedido 
+       SET estado_pedido = @ep 
+       WHERE pedido_id = @pid`,
+      {
+        ep: trans.estadoPedido,
+        pid: pedidoId,
+      }
+    );
+
+    // -------------------------
+    // 🚚 ASIGNAR REPARTIDOR SI ESTÁ LISTO
+    // -------------------------
+    if (accion === "listo") {
+      const repartidorRes = await q(`
+        SELECT TOP 1 empleado_id
+        FROM Empleado
+        WHERE rol_id = 3 AND activo = 1
+        ORDER BY ultima_sesion ASC
+      `);
+
+      const repartidor = repartidorRes.recordset[0];
+
+      if (repartidor) {
+        await q(
+          `UPDATE Pedido
+           SET repartidor_id = @rid
+           WHERE pedido_id = @pid`,
+          {
+            rid: repartidor.empleado_id,
+            pid: pedidoId,
+          }
+        );
+      }
+    }
+
+    // -------------------------
+    // LOG SISTEMA
+    // -------------------------
     await q(
       `INSERT INTO LogSistema (nivel, modulo, accion, pedido_id, empleado_id, detalle)
        VALUES ('INFO', 'cocina', @acc, @pid, @emp, @det)`,
@@ -161,12 +229,22 @@ router.patch("/pedidos/:id/estado", kitchenAccess, async (req, res) => {
         acc: `cocina_${accion}`,
         pid: pedidoId,
         emp: empleadoId,
-        det: JSON.stringify({ accion, estado_cocina: trans.estadoCocina, estado_pedido: trans.estadoPedido }),
+        det: JSON.stringify({
+          accion,
+          estado_cocina: trans.estadoCocina,
+          estado_pedido: trans.estadoPedido,
+          repartidor_asignado: accion === "listo",
+        }),
       }
     );
 
-    res.json({ ok: true, nuevo_estado: trans.estadoPedido });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+    res.json({
+      ok: true,
+      nuevo_estado: trans.estadoPedido,
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // ══════════════════════════════════════════════════════════════
