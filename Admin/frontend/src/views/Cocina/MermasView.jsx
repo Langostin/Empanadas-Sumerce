@@ -1,12 +1,14 @@
 import {
   Box, Typography, Paper, TextField, Button, Divider,
-  alpha, MenuItem, Alert, Collapse, InputAdornment,
+  alpha, MenuItem, Alert, Collapse, InputAdornment, Chip
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/DeleteRounded";
 import InventoryIcon from "@mui/icons-material/Inventory2Rounded";
 import WarningIcon from "@mui/icons-material/WarningAmberRounded";
 import AttachMoneyIcon from "@mui/icons-material/AttachMoneyRounded";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { cocinaService } from "../../services/cocinaService";
+import { api } from "../../services/authService";
 
 const TIPOS_MERMA = [
   "Preparación incorrecta",
@@ -18,26 +20,91 @@ const TIPOS_MERMA = [
 ];
 
 export default function MermasView() {
+  const [insumos, setInsumos] = useState([]);
+  const [mermas, setMermas] = useState([]);
+
   const [producto, setProducto] = useState("");
   const [cantidad, setCantidad] = useState("");
   const [tipo, setTipo] = useState("");
+
+  const [metricas, setMetricas] = useState({
+    total_mermas: 0,
+    unidades: 0,
+    perdida: 0,
+  });
+
   const [error, setError] = useState("");
   const [exito, setExito] = useState(false);
 
-  const registrar = () => {
-    if (!producto || !cantidad || !tipo) {
-      setError("Completa todos los campos.");
-      return;
+  useEffect(() => {
+    cargarInsumos();
+    cargarMetricas();
+    cargarMermas();
+  }, []);
+
+  const cargarInsumos = async () => {
+    try {
+      const res = await api.get("/cocina/insumos");
+      setInsumos(res.data);
+    } catch (err) {
+      setError("Error cargando insumos");
     }
+  };
 
-    // 🔥 aquí luego conectas backend
-    console.log({ producto, cantidad, tipo });
+  const cargarMetricas = async () => {
+    try {
+      const data = await cocinaService.getMetricasMermasHoy();
 
-    setExito(true);
-    setError("");
-    setProducto("");
-    setCantidad("");
-    setTipo("");
+      setMetricas({
+        total_mermas: Number(data.total_mermas) || 0,
+        unidades: Number(data.unidades) || 0,
+        perdida: Number(data.perdida) || 0,
+      });
+
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const cargarMermas = async () => {
+    try {
+      const data = await cocinaService.getMermas();
+      setMermas(data);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const registrar = async () => {
+    try {
+      if (!producto || !cantidad || !tipo) {
+        setError("Completa todos los campos.");
+        return;
+      }
+
+      const [tipoSel, idSel] = producto.split("-");
+
+      await cocinaService.registrarMerma({
+        insumo_id: tipoSel === "insumo" ? Number(idSel) : null,
+        producto_id: tipoSel === "producto" ? Number(idSel) : null,
+        cantidad: Number(cantidad),
+        tipo_merma: tipo,
+      });
+
+      setExito(true);
+      setError("");
+      setProducto("");
+      setCantidad("");
+      setTipo("");
+
+      cargarMetricas();
+      cargarMermas();
+
+    } catch (err) {
+      console.error("ERROR COMPLETO 👉", err);
+      console.error("RESPUESTA 👉", err.response?.data);
+      setError(err.response?.data?.error || "Error al registrar merma");
+    }
   };
 
   return (
@@ -50,73 +117,59 @@ export default function MermasView() {
             width: 44, height: 44, borderRadius: 2.5,
             background: "linear-gradient(135deg, #E53935, #B71C1C)",
             display: "flex", alignItems: "center", justifyContent: "center",
-            boxShadow: "0 4px 14px rgba(229,57,53,0.3)",
           }}
         >
           <DeleteIcon sx={{ color: "#fff", fontSize: 22 }} />
         </Box>
         <Box>
-          <Typography sx={{ fontFamily: "sans-serif", fontWeight: 800, fontSize: 20, color: "#0D1B2E" }}>
+          <Typography sx={{ fontWeight: 800, fontSize: 20 }}>
             Mermas
           </Typography>
-          <Typography variant="caption" sx={{ color: "#4A5B72" }}>
+          <Typography variant="caption">
             Control de pérdidas
           </Typography>
         </Box>
       </Box>
 
-      {/* STATS RÁPIDAS (fake por ahora) */}
+      {/* STATS */}
       <Box sx={{ display: "flex", gap: 1.5 }}>
         {[
-          { label: "Hoy", value: 5, color: "#E53935", icon: <WarningIcon /> },
-          { label: "Unidades", value: 18, color: "#023C81", icon: <InventoryIcon /> },
-          { label: "Pérdida", value: "$320", color: "#18A558", icon: <AttachMoneyIcon /> },
+          { label: "Hoy", value: metricas.total_mermas, color: "#E53935", icon: <WarningIcon /> },
+          { label: "Unidades", value: metricas.unidades, color: "#023C81", icon: <InventoryIcon /> },
+          { label: "Pérdida", value: `$${metricas.perdida}`, color: "#18A558", icon: <AttachMoneyIcon /> },
         ].map((m) => (
-          <Box
-            key={m.label}
-            sx={{
-              flex: 1, p: 1.8, borderRadius: 3, textAlign: "center",
-              background: alpha(m.color, 0.07),
-              border: `1.5px solid ${alpha(m.color, 0.18)}`,
-            }}
-          >
-            <Box sx={{ display: "flex", justifyContent: "center", mb: 0.5 }}>
-              {m.icon}
-            </Box>
+          <Box key={m.label} sx={{
+            flex: 1, p: 1.8, borderRadius: 3, textAlign: "center",
+            background: alpha(m.color, 0.07),
+            border: `1.5px solid ${alpha(m.color, 0.18)}`,
+          }}>
+            {m.icon}
             <Typography sx={{ fontWeight: 800, fontSize: 20, color: m.color }}>
               {m.value}
             </Typography>
-            <Typography variant="caption" sx={{ color: "#4A5B72", fontSize: 11 }}>
-              {m.label}
-            </Typography>
+            <Typography variant="caption">{m.label}</Typography>
           </Box>
         ))}
       </Box>
 
-      {/* FORMULARIO */}
-      <Paper
-        elevation={0}
-        sx={{
-          p: 3, borderRadius: 4,
-          border: "1.5px solid rgba(229,57,53,0.15)",
-          background: "#fff",
-          boxShadow: "0 2px 20px rgba(229,57,53,0.06)",
-        }}
-      >
-        <Typography sx={{ fontWeight: 700, fontSize: 13, color: "#4A5B72", mb: 2 }}>
-          Registrar merma
-        </Typography>
+      {/* FORM */}
+      <Paper sx={{ p: 3, borderRadius: 4 }}>
 
-        {/* Producto */}
         <TextField
           fullWidth
-          label="Producto"
+          select
+          label="Insumo / Producto"
           value={producto}
           onChange={(e) => setProducto(e.target.value)}
           sx={{ mb: 2 }}
-        />
+        >
+          {insumos.map((i) => (
+            <MenuItem key={`${i.tipo}-${i.id}`} value={`${i.tipo}-${i.id}`}>
+              {i.nombre} ({i.tipo})
+            </MenuItem>
+          ))}
+        </TextField>
 
-        {/* Cantidad */}
         <TextField
           fullWidth
           label="Cantidad"
@@ -125,13 +178,10 @@ export default function MermasView() {
           onChange={(e) => setCantidad(e.target.value)}
           sx={{ mb: 2 }}
           InputProps={{
-            startAdornment: (
-              <InputAdornment position="start">#</InputAdornment>
-            ),
+            startAdornment: <InputAdornment position="start">#</InputAdornment>,
           }}
         />
 
-        {/* Tipo */}
         <TextField
           fullWidth
           select
@@ -141,44 +191,72 @@ export default function MermasView() {
           sx={{ mb: 2 }}
         >
           {TIPOS_MERMA.map((t) => (
-            <MenuItem key={t} value={t}>
-              {t}
-            </MenuItem>
+            <MenuItem key={t} value={t}>{t}</MenuItem>
           ))}
         </TextField>
 
         <Divider sx={{ mb: 2 }} />
 
-        <Button
-          fullWidth
-          variant="contained"
-          onClick={registrar}
-          sx={{
-            background: "linear-gradient(135deg, #E53935, #B71C1C)",
-            color: "#fff",
-            fontWeight: 700,
-            borderRadius: 3,
-            py: 1.5,
-            boxShadow: "0 4px 16px rgba(229,57,53,0.35)",
-            "&:hover": {
-              background: "linear-gradient(135deg, #B71C1C, #7F0000)",
-            },
-          }}
-        >
+        <Button fullWidth variant="contained" onClick={registrar}>
           Registrar merma
         </Button>
       </Paper>
 
-      {/* ERROR */}
+      {/* HISTORIAL */}
+      <Paper sx={{ p: 2.5, borderRadius: 4 }}>
+        <Typography sx={{ fontWeight: 700, mb: 1.5 }}>
+          Historial de mermas
+        </Typography>
+
+        {mermas.length === 0 ? (
+          <Typography variant="body2">Sin registros</Typography>
+        ) : (
+          mermas.map((m) => (
+            <Box
+              key={m.merma_id}
+              sx={{
+                p: 1.5,
+                mb: 1,
+                borderRadius: 2,
+                border: "1px solid #eee",
+              }}
+            >
+              {/* 🔥 NOMBRE + TIPO */}
+              <Typography sx={{ fontWeight: 600 }}>
+                {m.nombre}
+              </Typography>
+
+              <Chip
+                label={m.tipo}
+                size="small"
+                sx={{
+                  mt: 0.5,
+                  mb: 0.5,
+                  background: m.tipo === "producto" ? "#E3F2FD" : "#FFF3E0",
+                }}
+              />
+
+              <Typography variant="body2">
+                {m.cantidad} unidades • {m.tipo_merma}
+              </Typography>
+
+              <Typography variant="caption">
+                ${m.costo_total} pérdida
+              </Typography>
+            </Box>
+          ))
+        )}
+      </Paper>
+
+      {/* ALERTAS */}
       <Collapse in={!!error}>
-        <Alert severity="error" onClose={() => setError("")} sx={{ borderRadius: 2.5 }}>
+        <Alert severity="error" onClose={() => setError("")}>
           {error}
         </Alert>
       </Collapse>
 
-      {/* EXITO */}
       <Collapse in={exito}>
-        <Alert severity="success" onClose={() => setExito(false)} sx={{ borderRadius: 2.5 }}>
+        <Alert severity="success" onClose={() => setExito(false)}>
           Merma registrada correctamente
         </Alert>
       </Collapse>

@@ -391,4 +391,210 @@ router.get("/cocineros", kitchenAccess, async (_, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+
+//mermas
+
+// LISTADO DE MERMAS
+router.get("/mermas", kitchenAccess, async (_, res) => {
+  try {
+const r = await q(`
+SELECT
+  m.merma_id,
+  COALESCE(i.nombre, p.nombre) AS nombre,
+  CASE 
+    WHEN m.insumo_id IS NOT NULL THEN 'insumo'
+    WHEN m.producto_id IS NOT NULL THEN 'producto'
+  END AS tipo,
+  m.cantidad,
+  m.tipo_merma,
+  m.motivo,
+  m.costo_total,
+  m.fecha
+FROM Merma m
+LEFT JOIN Insumo i ON m.insumo_id = i.insumo_id
+LEFT JOIN Producto p ON m.producto_id = p.producto_id
+ORDER BY m.fecha DESC
+`);
+
+    res.json(r.recordset);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// MÉTRICAS DE MERMAS DEL DÍA
+router.get("/mermas/metricas/hoy", kitchenAccess, async (_, res) => {
+  try {
+    const r = await q(`
+      SELECT
+        COUNT(*) AS total_mermas,
+        ISNULL(SUM(cantidad), 0) AS unidades,
+        ISNULL(SUM(costo_total), 0) AS perdida
+      FROM Merma
+      WHERE DATEDIFF(DAY, fecha, GETDATE()) = 0
+    `);
+
+    res.json(r.recordset[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.get("/insumos", kitchenAccess, async (_, res) => {
+  try {
+    const r = await q(`
+      SELECT insumo_id AS id, nombre, 'insumo' AS tipo
+      FROM Insumo
+      WHERE activo = 1
+
+      UNION ALL
+
+      SELECT producto_id AS id, nombre, 'producto' AS tipo
+      FROM Producto
+      WHERE activo = 1
+
+      ORDER BY nombre
+    `);
+
+    res.json(r.recordset);
+  } catch (err) {
+    console.error("ERROR INSUMOS:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post("/mermas", kitchenAccess, async (req, res) => {
+  try {
+    const { insumo_id, producto_id, cantidad, tipo_merma, motivo } = req.body;
+
+    // ✅ VALIDACIÓN CORRECTA
+    if ((!insumo_id && !producto_id) || !cantidad || !tipo_merma) {
+      return res.status(400).json({ error: "Faltan datos" });
+    }
+
+    const empleado_id = req.user.empleadoId;
+
+    let costo_unitario = 0;
+    let costo_total = 0;
+
+    // =====================================
+    // 🔥 CASO 1: ES INSUMO
+    // =====================================
+    if (insumo_id) {
+      const r = await q(
+        `SELECT stock_actual, costo_unitario
+         FROM Insumo
+         WHERE insumo_id = @id`,
+        { id: insumo_id }
+      );
+
+      const insumo = r.recordset[0];
+
+      if (!insumo) {
+        return res.status(404).json({ error: "Insumo no encontrado" });
+      }
+
+      if (insumo.stock_actual < cantidad) {
+        return res.status(400).json({
+          error: "No hay suficiente stock para registrar la merma",
+        });
+      }
+
+      costo_unitario = insumo.costo_unitario;
+      costo_total = cantidad * costo_unitario;
+
+      // 🔥 descontar stock
+      await q(
+        `UPDATE Insumo
+         SET stock_actual = stock_actual - @cantidad
+         WHERE insumo_id = @id`,
+        { cantidad, id: insumo_id }
+      );
+    }
+
+    // =====================================
+    // 🔥 CASO 2: ES PRODUCTO (EMPANADA)
+    // =====================================
+    if (producto_id) {
+      const r = await q(
+        `SELECT precio_actual
+         FROM Producto
+         WHERE producto_id = @id`,
+        { id: producto_id }
+      );
+
+      const producto = r.recordset[0];
+
+      if (!producto) {
+        return res.status(404).json({ error: "Producto no encontrado" });
+      }
+
+      // 🔥 usamos precio como costo (puedes cambiarlo después)
+      costo_unitario = producto.precio_actual;
+      costo_total = cantidad * costo_unitario;
+    }
+
+    // =====================================
+    // 🔥 INSERT MERMA
+    // =====================================
+    await q(
+      `INSERT INTO Merma (
+        insumo_id,
+        producto_id,
+        cantidad,
+        tipo_merma,
+        motivo,
+        costo_unitario,
+        costo_total,
+        empleado_id
+      )
+      VALUES (
+        @insumo_id,
+        @producto_id,
+        @cantidad,
+        @tipo_merma,
+        @motivo,
+        @costo_unitario,
+        @costo_total,
+        @empleado_id
+      )`,
+      {
+        insumo_id: insumo_id || null,
+        producto_id: producto_id || null,
+        cantidad,
+        tipo_merma,
+        motivo: motivo || null,
+        costo_unitario,
+        costo_total,
+        empleado_id,
+      }
+    );
+
+    // =====================================
+    // 🔥 LOG
+    // =====================================
+    await q(
+      `INSERT INTO LogSistema (nivel, modulo, accion, empleado_id, detalle)
+       VALUES ('WARN', 'mermas', 'registro_merma', @emp, @det)`,
+
+      {
+        emp: empleado_id,
+        det: JSON.stringify({
+          insumo_id,
+          producto_id,
+          cantidad,
+          tipo_merma,
+          costo_total,
+        }),
+      }
+    );
+
+    res.json({ ok: true });
+
+  } catch (err) {
+    console.error("ERROR MERMAS:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;
