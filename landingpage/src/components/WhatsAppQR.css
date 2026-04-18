@@ -1,0 +1,124 @@
+/* ========== WhatsApp QR ========== */
+.whatsapp-section {
+  position: relative;
+  overflow: hidden;
+}
+
+.whatsapp-section::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  translate: -50% -50%;
+  width: 400px;
+  height: 400px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(250, 204, 21, 0.08), transparent 70%);
+  pointer-events: none;
+}
+
+.whatsapp-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2xl);
+}
+
+.whatsapp-text {
+  text-align: center;
+}
+
+.whatsapp-text h2 {
+  font-size: var(--fs-2xl);
+  font-weight: 800;
+  margin-bottom: var(--space-sm);
+  background: linear-gradient(135deg, var(--yellow-400), var(--yellow-300));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.whatsapp-text p {
+  font-size: var(--fs-base);
+  color: var(--white-70);
+  max-width: 400px;
+  margin: 0 auto;
+}
+
+.whatsapp-qr-wrapper {
+  position: relative;
+}
+
+.whatsapp-qr-card {
+  background: var(--blue-800);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--neu-shadow-lg);
+  border: 1px solid var(--glass-border);
+  padding: var(--space-2xl);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-lg);
+}
+
+.whatsapp-qr-inner {
+  background: white;
+  padding: var(--space-md);
+  border-radius: var(--radius-md);
+  box-shadow: var(--neu-inset);
+}
+
+.whatsapp-qr-label {
+  font-size: var(--fs-sm);
+  color: var(--white-70);
+  text-align: center;
+}
+
+.whatsapp-qr-label strong {
+  color: var(--yellow-400);
+}
+
+/* Mobile direct button */
+.whatsapp-direct-btn {
+  font-size: var(--fs-md);
+  padding: var(--space-lg) var(--space-2xl);
+  gap: var(--space-md);
+}
+
+.whatsapp-divider {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  width: 100%;
+  max-width: 300px;
+}
+
+.whatsapp-divider-line {
+  flex: 1;
+  height: 1px;
+  background: var(--white-10);
+}
+
+.whatsapp-divider-text {
+  font-size: var(--fs-xs);
+  color: var(--white-50);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+/* Desktop */
+@media (min-width: 768px) {
+  .whatsapp-content {
+    flex-direction: row;
+    justify-content: center;
+    gap: var(--space-4xl);
+  }
+
+  .whatsapp-text {
+    text-align: left;
+  }
+
+  .whatsapp-text p {
+    margin: 0;
+  }
+}

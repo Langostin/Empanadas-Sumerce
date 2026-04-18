@@ -6,9 +6,12 @@
  * ─────────────────────────────────────────────────────────────────
  */
 
-require("dotenv").config()
 const Stripe = require("stripe")
-const { query } = require("./db")
+const cfg    = require("../../config")
+const { query } = require("../db")
+
+const stripe   = Stripe(cfg.stripe.secretKey, { apiVersion: "2024-06-20" })
+const BASE_URL = cfg.baseUrl
 
 // Import lazy para evitar dependencias circulares
 let _notif = null
@@ -16,9 +19,6 @@ function getNotif() {
   if (!_notif) _notif = require("./notificaciones")
   return _notif
 }
-
-const stripe   = Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: "2024-06-20" })
-const BASE_URL = process.env.BASE_URL
 
 // ══════════════════════════════════════════════════════════════════
 //  1. CREAR LINK / SESIÓN DE PAGO
@@ -98,7 +98,7 @@ async function manejarWebhook(rawBody, signature) {
   try {
     event = stripe.webhooks.constructEvent(
       rawBody, signature,
-      process.env.STRIPE_WEBHOOK_SECRET || "whsec_PON_TU_SECRET_AQUI"
+      cfg.stripe.webhookSecret || "whsec_PON_TU_SECRET_AQUI"
     )
   } catch (err) {
     console.error("❌ Webhook firma inválida:", err.message)

@@ -78,39 +78,15 @@ function BrandPanel() {
         <Typography
           variant="h3"
           sx={{
-            fontFamily: "'Syne',sans-serif", fontWeight: 800,
+            fontFamily: "'Syne',sans-serif", fontWeight: 700,
             color: "#fff", lineHeight: 1.15, mb: 2,
           }}
         >
-          Gestiona tu negocio desde aquí 🇨🇴
+          Gestiona tu negocio desde aquí
         </Typography>
         <Typography variant="body1" sx={{ color: "rgba(255,255,255,0.55)", lineHeight: 1.7 }}>
           Monitorea pedidos, administra clientes y empleados, todo en un solo lugar.
         </Typography>
-      </Box>
-
-      {/* Stats decorativos */}
-      <Box sx={{ display: "flex", gap: 3 }}>
-        {[
-          { label: "Clientes activos", emoji: "👥" },
-          { label: "Pedidos hoy",      emoji: "🥟" },
-          { label: "Empleados",        emoji: "👔" },
-        ].map(s => (
-          <Box
-            key={s.label}
-            sx={{
-              flex: 1, p: 1.5, borderRadius: 2.5,
-              background: "rgba(254,216,23,0.08)",
-              border: "1px solid rgba(254,216,23,0.15)",
-              textAlign: "center",
-            }}
-          >
-            <Typography sx={{ fontSize: 22 }}>{s.emoji}</Typography>
-            <Typography variant="caption" sx={{ color: "rgba(255,255,255,0.5)", fontSize: 10, display: "block" }}>
-              {s.label}
-            </Typography>
-          </Box>
-        ))}
       </Box>
     </Box>
   );
@@ -156,7 +132,7 @@ function LoginForm({ onForgot }) {
     >
       <Box>
         <Typography variant="h4" sx={{ fontFamily: "'Syne',sans-serif", fontWeight: 800, color: "#023C81", lineHeight: 1 }}>
-          Bienvenido 👋
+          Bienvenido
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
           Ingresa con tu usuario o correo electrónico
@@ -383,7 +359,7 @@ export default function LoginView() {
 
           <Divider sx={{ mt: 4, mb: 2 }} />
           <Typography variant="caption" color="text.disabled" sx={{ textAlign: "center", fontSize: 10 }}>
-            🇨🇴 Empanadas Sumercé — Panel Administrativo v1.0
+            Empanadas Sumercé — Panel Administrativo v1.0
           </Typography>
         </CardContent>
       </Card>

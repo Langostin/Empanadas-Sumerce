@@ -1,0 +1,77 @@
+/* ========== Promotions ========== */
+.promotions {
+  position: relative;
+}
+
+.promotions-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-xl);
+}
+
+/* Promo card — flexbox column to pin CTA at bottom */
+.promo-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Badge sits inline above title, not absolute */
+.promo-card-badge {
+  margin-bottom: var(--space-md);
+}
+
+.promo-card-title {
+  font-size: var(--fs-xl);
+  font-weight: 700;
+  margin-bottom: var(--space-sm);
+  line-height: 1.3;
+}
+
+.promo-card-description {
+  font-size: var(--fs-base);
+  color: var(--white-70);
+  margin-bottom: var(--space-lg);
+  line-height: 1.6;
+  flex: 1;
+}
+
+.promo-card-pricing {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-md);
+  margin-bottom: var(--space-lg);
+}
+
+.promo-price-original {
+  font-size: var(--fs-md);
+  color: var(--white-50);
+  text-decoration: line-through;
+}
+
+.promo-price-current {
+  font-size: var(--fs-2xl);
+  font-weight: 800;
+  color: var(--yellow-400);
+}
+
+.promo-price-currency {
+  font-size: var(--fs-sm);
+  font-weight: 400;
+  color: var(--yellow-300);
+}
+
+/* CTA stays pinned to bottom */
+.promo-card-cta {
+  width: 100%;
+  text-align: center;
+  margin-top: auto;
+}
+
+/* Desktop */
+@media (min-width: 768px) {
+  .promotions-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}

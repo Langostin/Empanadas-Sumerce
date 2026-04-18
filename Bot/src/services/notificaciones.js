@@ -15,7 +15,7 @@
  * ─────────────────────────────────────────────────────────────────
  */
 
-const { query }        = require("./db")
+const { query }        = require("../db")
 const { generarTicket } = require("./ticket")
 const facturacion       = require("./facturacion")
 

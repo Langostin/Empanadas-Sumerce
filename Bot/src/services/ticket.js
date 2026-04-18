@@ -14,7 +14,7 @@
  */
 
 const PDFDocument = require("pdfkit")
-const { query }   = require("./db")
+const { query }   = require("../db")
 
 /**
  * Genera el PDF del ticket de compra para un pedido.

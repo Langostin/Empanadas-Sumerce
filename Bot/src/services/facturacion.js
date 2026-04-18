@@ -11,28 +11,22 @@
  * ─────────────────────────────────────────────────────────────────
  */
 
-require("dotenv").config()
-const axios = require("axios")
-const { query } = require("./db")
+const axios  = require("axios")
+const cfg    = require("../../config")
+const { query } = require("../db")
 
 // ══════════════════════════════════════════════════════════════════
-//  CONFIGURACIÓN
+//  CONFIGURACIÓN — lee todo desde config/index.js
 // ══════════════════════════════════════════════════════════════════
-const SANDBOX = process.env.FACTURAMA_SANDBOX !== "false"
-
-const BASE_URL       = SANDBOX
-  ? "https://apisandbox.facturama.mx"
-  : "https://api.facturama.mx"
-
-const FACTURAMA_USER = process.env.FACTURAMA_USER || "pruebas"
-const FACTURAMA_PASS = process.env.FACTURAMA_PASS || "pruebas2011"
-const AUTH_HEADER    = "Basic " + Buffer.from(`${FACTURAMA_USER}:${FACTURAMA_PASS}`).toString("base64")
+const SANDBOX      = cfg.facturama.sandbox
+const BASE_URL     = SANDBOX ? "https://apisandbox.facturama.mx" : "https://api.facturama.mx"
+const AUTH_HEADER  = "Basic " + Buffer.from(`${cfg.facturama.user}:${cfg.facturama.password}`).toString("base64")
 
 const EMISOR = {
-  Rfc:          process.env.EMISOR_RFC              || "EMP020101AA1",
-  Name:         process.env.EMISOR_NOMBRE           || "EMPANADAS SUMERCE",
-  FiscalRegime: process.env.EMISOR_REGIMEN          || "621",
-  TaxZipCode:   process.env.EMISOR_LUGAR_EXPEDICION || "32000",
+  Rfc:          cfg.emisor.rfc,
+  Name:         cfg.emisor.nombre,
+  FiscalRegime: cfg.emisor.regimen,
+  TaxZipCode:   cfg.emisor.lugarExpedicion,
 }
 
 console.log(`🧾 Facturama → ${SANDBOX ? "SANDBOX" : "PRODUCCIÓN"} | ${BASE_URL}`)
@@ -221,8 +215,8 @@ async function generarFactura(pedidoId) {
     Receiver: {
       Rfc:          rfcReceptor,
       Name:         p.razon_social,
-      CfdiUse:      usoFinal,
-      FiscalRegime: regimenFinal, 
+      CfdiUse:      usoFinal,        // ← siempre compatible, nunca null
+      FiscalRegime: regimenFinal,    // ← siempre string válido, nunca null
       TaxZipCode:   (p.codigo_postal || EMISOR.TaxZipCode).toString().trim(),
     },
 

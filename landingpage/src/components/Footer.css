@@ -1,0 +1,125 @@
+/* ========== Footer ========== */
+.footer {
+  background: var(--blue-950);
+  border-top: 1px solid var(--glass-border);
+  padding: var(--space-3xl) 0 var(--space-xl);
+}
+
+.footer-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-2xl);
+  margin-bottom: var(--space-2xl);
+}
+
+.footer-brand {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.footer-logo {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.footer-logo img {
+  height: 36px;
+  width: auto;
+}
+
+.footer-logo-text {
+  font-size: var(--fs-lg);
+  font-weight: 800;
+  background: linear-gradient(135deg, var(--yellow-400), var(--yellow-300));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.footer-description {
+  font-size: var(--fs-sm);
+  color: var(--white-50);
+  line-height: 1.7;
+  max-width: 300px;
+}
+
+.footer-column-title {
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--white-70);
+  margin-bottom: var(--space-md);
+}
+
+.footer-links {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.footer-link {
+  font-size: var(--fs-sm);
+  color: var(--white-50);
+  transition: color var(--transition-fast);
+}
+
+.footer-link:hover {
+  color: var(--yellow-400);
+}
+
+.footer-contact-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-size: var(--fs-sm);
+  color: var(--white-50);
+  margin-bottom: var(--space-sm);
+}
+
+.footer-contact-item svg {
+  flex-shrink: 0;
+  color: var(--yellow-400);
+}
+
+.footer-divider {
+  height: 1px;
+  background: var(--white-05);
+  margin-bottom: var(--space-lg);
+}
+
+.footer-bottom {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-sm);
+  text-align: center;
+}
+
+.footer-copyright {
+  font-size: var(--fs-xs);
+  color: var(--white-30);
+}
+
+.footer-made-with {
+  font-size: var(--fs-xs);
+  color: var(--white-30);
+}
+
+.footer-made-with span {
+  color: var(--yellow-400);
+}
+
+/* Desktop */
+@media (min-width: 768px) {
+  .footer-grid {
+    grid-template-columns: 2fr 1fr 1fr 1fr;
+  }
+
+  .footer-bottom {
+    flex-direction: row;
+    justify-content: space-between;
+  }
+}
