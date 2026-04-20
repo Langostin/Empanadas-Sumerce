@@ -1,5 +1,6 @@
 // src/controllers/useCocina.js
 import { useState, useEffect, useCallback, useRef } from "react";
+import { io } from "socket.io-client";
 import { cocinaService } from "../services/cocinaService";
 
 // ── Hook principal: cola de pedidos con polling automático ─────
@@ -24,11 +25,24 @@ export function useColaCocina(intervaloMs = 15000) {
     }
   }, []);
 
-  // Carga inicial + polling automático
+  // Carga inicial + polling automático + WebSockets
   useEffect(() => {
     fetchCola(false);
+    
+    // WebSockets listener
+    const socket = io("/", { path: "/socket.io" });
+    
+    socket.on("pedido_nuevo", (data) => {
+      console.log("🔥 Nuevo pedido recibido via Socket:", data);
+      fetchCola(false);
+    });
+
     intervalRef.current = setInterval(() => fetchCola(true), intervaloMs);
-    return () => clearInterval(intervalRef.current);
+    
+    return () => {
+      socket.disconnect();
+      clearInterval(intervalRef.current);
+    };
   }, [fetchCola, intervaloMs]);
 
   return { cola, loading, error, lastSync, reload: () => fetchCola(false) };

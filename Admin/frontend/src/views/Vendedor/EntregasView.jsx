@@ -11,7 +11,10 @@ import AccessTimeIcon     from "@mui/icons-material/AccessTimeRounded";
 import StorefrontIcon     from "@mui/icons-material/StorefrontRounded";
 import DeliveryDiningIcon from "@mui/icons-material/DeliveryDiningRounded";
 import CheckCircleIcon    from "@mui/icons-material/CheckCircleRounded";
+import QrCode2Icon        from "@mui/icons-material/QrCode2";
+import LocationOnIcon     from "@mui/icons-material/LocationOnRounded";
 import { QRCodeSVG } from "qrcode.react";
+import { io } from "socket.io-client";
 import { api } from "../../services/authService";
 
 export default function EntregasView() {
@@ -29,11 +32,44 @@ export default function EntregasView() {
   const [currentTiendaPedido, setCurrentTiendaPedido] = useState(null);
   const [tiendaInputCode, setTiendaInputCode] = useState("");
   const [tiendaFeedback, setTiendaFeedback] = useState(null);
+
+  // For Domicilio QR
+  const [qrDialogOpen, setQrDialogOpen] = useState(false);
+  const [currentQrPedido, setCurrentQrPedido] = useState(null);
+
+  // For Local Details
+  const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
+  const [currentDetailsPedido, setCurrentDetailsPedido] = useState(null);
+  
   
   useEffect(() => {
     cargarEntregas();
-    const interval = setInterval(cargarEntregas, 20000);
-    return () => clearInterval(interval);
+    
+    // Configuración de WebSockets para actualizaciones en tiempo real
+    const socket = io("/", { path: "/socket.io" });
+    
+    socket.on("connect", () => {
+      console.log("✅ Conectado al servidor de WebSockets");
+    });
+
+    socket.on("pedido_actualizado", (data) => {
+      console.log("🚀 Pedido actualizado detectado via Socket:", data);
+      // Solo refrescar si el pedido está ahora en un estado que nos interese (ej. listo)
+      if (data.estado === "listo" || data.estado === "entregado") {
+        cargarEntregas();
+      }
+    });
+
+    socket.on("disconnect", () => {
+      console.log("❌ Desconectado de WebSockets");
+    });
+
+    const interval = setInterval(cargarEntregas, 60000); // Polling de respaldo cada 1 min (antes era 20s)
+    
+    return () => {
+      socket.disconnect();
+      clearInterval(interval);
+    };
   }, []);
 
   const cargarEntregas = async () => {
@@ -151,14 +187,28 @@ export default function EntregasView() {
                     </Typography>
                   </Box>
                   
-                  <Button 
-                    fullWidth variant="contained" 
-                    startIcon={<CheckCircleIcon />}
-                    onClick={() => handleEntregarLocal(p.pedido_id)}
-                    sx={{ borderRadius: 2, background: "linear-gradient(135deg,#023C81,#1254A8)", fontWeight: 700 }}
-                  >
-                    Marcar Entregado
-                  </Button>
+                  <Box sx={{ display: "flex", gap: 1 }}>
+                    <Button 
+                      flex={1} variant="outlined" 
+                      size="small"
+                      onClick={() => {
+                        setCurrentDetailsPedido(p);
+                        setDetailsDialogOpen(true);
+                      }}
+                      sx={{ borderRadius: 2, borderColor: "#023C81", color: "#023C81", fontWeight: 600 }}
+                    >
+                      Ver Detalles
+                    </Button>
+                    <Button 
+                      flex={1} variant="contained" 
+                      size="small"
+                      startIcon={<CheckCircleIcon />}
+                      onClick={() => handleEntregarLocal(p.pedido_id)}
+                      sx={{ borderRadius: 2, background: "linear-gradient(135deg,#023C81,#1254A8)", fontWeight: 700 }}
+                    >
+                      Entregar
+                    </Button>
+                  </Box>
                 </Paper>
               </Grid>
            ))}
@@ -245,17 +295,42 @@ export default function EntregasView() {
                     <Chip size="small" label="Domicilio" icon={<DeliveryDiningIcon fontSize="small"/>} sx={{ fontWeight: 700, fontSize: 10, background: alpha('#18A558', 0.1), color: '#18A558' }} />
                   </Box>
                   
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
+                     <PersonIcon sx={{ fontSize: 16, color: "#4A5B72" }} />
+                     <Typography variant="body2" sx={{ color: "#4A5B72", fontWeight: 600 }}>
+                       {p.cliente_nombre} {p.cliente_apellidos}
+                     </Typography>
+                  </Box>
+                  
+                  <Box sx={{ display: "flex", alignItems: "flex-start", gap: 1, mb: 2 }}>
+                     <LocationOnIcon sx={{ fontSize: 16, color: "#4A5B72", mt: 0.3 }} />
+                     <Typography variant="caption" sx={{ color: "#4A5B72" }}>
+                       {p.calle ? `${p.calle} ${p.numero_exterior || ''}, ${p.colonia || ''}` : "Sin dirección"}
+                     </Typography>
+                  </Box>
+
+                  <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
+                    <Typography sx={{ fontFamily: "sans-serif", fontWeight: 800, fontSize: 16, color: "#18A558" }}>
+                      ${p.total.toFixed(2)}
+                    </Typography>
+                  </Box>
+                  
                   {p.qr_codigo ? (
-                    <Box sx={{ mt: 2, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                      <Box sx={{ p: 1, border: `1px dashed ${alpha('#18A558',0.3)}`, borderRadius: 2, background: "#fff" }}>
-                        <QRCodeSVG value={p.qr_codigo} size={110} />
-                      </Box>
-                      <Typography variant="caption" color="text.secondary" mt={1.5} sx={{ display: "block", textAlign:"center" }}>
-                        Escanea el QR para asignar conductor
-                      </Typography>
-                    </Box>
+                    <Button 
+                      fullWidth variant="outlined" 
+                      startIcon={<QrCode2Icon />}
+                      onClick={() => {
+                        setCurrentQrPedido(p);
+                        setQrDialogOpen(true);
+                      }}
+                      sx={{ borderRadius: 2, borderColor: "#18A558", color: "#18A558", fontWeight: 700 }}
+                    >
+                      Ver QR Repartidor
+                    </Button>
                   ) : (
-                    <Typography color="error" variant="body2" mt={2} textAlign="center">Generando QR...</Typography>
+                    <Typography color="error" variant="body2" mt={2} textAlign="center">
+                      QR no generado aún (Se genera al terminar en cocina)
+                    </Typography>
                   )}
                 </Paper>
               </Grid>
@@ -286,6 +361,66 @@ export default function EntregasView() {
            <Button onClick={() => setTiendaDialogOpen(false)}>Cerrar</Button>
            <Button variant="contained" onClick={handleConfirmarTienda} disabled={tiendaFeedback?.type === 'success'}>
              Confirmar Entrega
+           </Button>
+         </DialogActions>
+      </Dialog>
+      {/* DIALOGO QR DOMICILIO */}
+      <Dialog open={qrDialogOpen} onClose={() => setQrDialogOpen(false)} maxWidth="xs" fullWidth>
+         <DialogTitle sx={{ textAlign: "center", pb: 1 }}>Código QR Repartidor</DialogTitle>
+         <DialogContent sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', pb: 4 }}>
+            <Typography variant="body2" color="text.secondary" mb={3} textAlign="center">
+              Muestra este código al repartidor para que asigne el pedido <b>{currentQrPedido?.folio}</b> a su cuenta.
+            </Typography>
+            {currentQrPedido?.qr_codigo && (
+              <Box sx={{ p: 2, border: `2px dashed ${alpha('#18A558',0.3)}`, borderRadius: 3, background: "#fff" }}>
+                <QRCodeSVG value={currentQrPedido.qr_codigo} size={250} />
+              </Box>
+            )}
+         </DialogContent>
+         <DialogActions>
+           <Button variant="outlined" onClick={() => setQrDialogOpen(false)} fullWidth sx={{ borderRadius: 2 }}>
+             Cerrar
+           </Button>
+         </DialogActions>
+      </Dialog>
+
+      {/* DIALOGO DETALLES LOCAL */}
+      <Dialog open={detailsDialogOpen} onClose={() => setDetailsDialogOpen(false)} maxWidth="sm" fullWidth>
+         <DialogTitle sx={{ fontWeight: 'bold', color: "#023C81" }}>Detalles del Pedido {currentDetailsPedido?.folio}</DialogTitle>
+         <DialogContent dividers>
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="subtitle2" fontWeight="bold" mb={1}>Información del Pedido</Typography>
+              <Box sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}>
+                <Typography variant="body2" color="text.secondary">Identificador:</Typography>
+                <Typography variant="body2" fontWeight="600">{currentDetailsPedido?.codigo_entrega_sistema}</Typography>
+              </Box>
+              <Box sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}>
+                <Typography variant="body2" color="text.secondary">Fecha:</Typography>
+                <Typography variant="body2" fontWeight="600">
+                  {currentDetailsPedido && new Date(currentDetailsPedido.fecha_pedido).toLocaleString("es-MX")}
+                </Typography>
+              </Box>
+              <Box sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}>
+                <Typography variant="body2" color="text.secondary">Estado:</Typography>
+                <Chip 
+                  size="small" 
+                  label={currentDetailsPedido?.estado_pedido} 
+                  color={currentDetailsPedido?.estado_pedido === 'recibido' ? 'warning' : 'default'}
+                  variant="outlined"
+                />
+              </Box>
+              <Divider sx={{ my: 2 }} />
+              <Box sx={{ display: "flex", justifyContent: "space-between" }}>
+                <Typography variant="subtitle2" fontWeight="bold">Total:</Typography>
+                <Typography variant="subtitle2" fontWeight="bold" color="#18A558">
+                  ${currentDetailsPedido?.total?.toFixed(2)}
+                </Typography>
+              </Box>
+            </Box>
+         </DialogContent>
+         <DialogActions>
+           <Button onClick={() => setDetailsDialogOpen(false)} variant="contained" fullWidth sx={{ borderRadius: 2 }}>
+             Cerrar
            </Button>
          </DialogActions>
       </Dialog>

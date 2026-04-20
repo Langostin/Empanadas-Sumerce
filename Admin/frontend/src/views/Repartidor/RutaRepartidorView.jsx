@@ -1,7 +1,9 @@
 // src/views/Repartidor/RutaRepartidorView.jsx
+import { useState } from "react";
 import {
   Box, Typography, Paper, Skeleton, Chip, Alert, Divider,
-  alpha, Button, Tooltip,
+  alpha, Button, Tooltip, Dialog, DialogTitle, DialogContent, 
+  DialogActions, TextField, InputAdornment, CircularProgress,
 } from "@mui/material";
 import TwoWheelerIcon    from "@mui/icons-material/TwoWheeler";
 import LocationOnIcon    from "@mui/icons-material/LocationOnRounded";
@@ -10,8 +12,11 @@ import AccessTimeIcon    from "@mui/icons-material/AccessTimeRounded";
 import PersonIcon        from "@mui/icons-material/PersonRounded";
 import RefreshIcon       from "@mui/icons-material/RefreshRounded";
 import QrCodeIcon        from "@mui/icons-material/QrCodeRounded";
+import WhatsAppIcon      from "@mui/icons-material/WhatsApp";
+import TagIcon           from "@mui/icons-material/Tag";
 import { useMisPedidos } from "../../controllers/useRepartidor";
 import { useNavigate }   from "react-router-dom";
+import { repartidorService } from "../../services/repartidorService";
 
 const ESTADO_CFG = {
   listo:     { label: "Listo para recoger", color: "#FED817",  bg: alpha("#FED817", 0.1)  },
@@ -20,7 +25,7 @@ const ESTADO_CFG = {
   entregado: { label: "Entregado",            color: "#18A558",  bg: alpha("#18A558", 0.1)  },
 };
 
-function PedidoCard({ p, onConfirmar }) {
+function PedidoCard({ p, onLlegue, onConfirmarClick }) {
   const est  = ESTADO_CFG[p.estado_pedido] || { label: p.estado_pedido, color: "#4A5B72", bg: alpha("#4A5B72", 0.1) };
   const hora = new Date(p.fecha_pedido).toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" });
 
@@ -81,6 +86,16 @@ function PedidoCard({ p, onConfirmar }) {
           </Box>
         )}
 
+        {/* Whatsapp del cliente - solo si está en camino */}
+        {p.estado_pedido === "en_camino" && p.whatsapp && (
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <WhatsAppIcon sx={{ color: "#25D366", fontSize: 16 }} />
+            <Typography sx={{ fontFamily: "sans-serif", fontSize: 12, color: "#25D366", fontWeight: 600 }}>
+              {p.whatsapp}
+            </Typography>
+          </Box>
+        )}
+
         <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mt: 0.5 }}>
           <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
             <AccessTimeIcon sx={{ color: "#4A5B72", fontSize: 14 }} />
@@ -94,12 +109,28 @@ function PedidoCard({ p, onConfirmar }) {
         </Box>
       </Box>
 
-      {/* Acción rápida */}
-      {(p.estado_pedido === "en_camino" || p.estado_pedido === "listo") && (
+      {/* Acciones */}
+      {p.estado_pedido === "listo" && (
+        <Button
+          fullWidth variant="contained" size="small"
+          startIcon={<LocationOnIcon />}
+          onClick={() => onLlegue(p.pedido_id)}
+          sx={{
+            mt: 1.5, borderRadius: 2.5,
+            background: "linear-gradient(135deg, #023C81, #0356B8)",
+            color: "#fff",
+            fontFamily: "sans-serif", fontWeight: 700, fontSize: 12,
+          }}
+        >
+          Ya llegué al domicilio
+        </Button>
+      )}
+
+      {p.estado_pedido === "en_camino" && (
         <Button
           fullWidth variant="outlined" size="small"
           startIcon={<CheckCircleIcon />}
-          onClick={() => onConfirmar(p.pedido_id)}
+          onClick={() => onConfirmarClick(p)}
           sx={{
             mt: 1.5, borderRadius: 2.5,
             borderColor: "#18A558", color: "#18A558",
@@ -118,12 +149,75 @@ export default function RutaRepartidorView() {
   const { pedidos, loading, error, lastSync, reload } = useMisPedidos();
   const navigate = useNavigate();
 
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [selectedPedido, setSelectedPedido] = useState(null);
+  const [codigoConfirm, setCodigoConfirm] = useState("");
+  const [confirmLoading, setConfirmLoading] = useState(false);
+  const [confirmError, setConfirmError] = useState("");
+  const [confirmSuccess, setConfirmSuccess] = useState(false);
+
   const hh = lastSync
     ? lastSync.toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit", second: "2-digit" })
     : "--:--:--";
 
   const activos   = pedidos.filter((p) => ["listo", "en_camino"].includes(p.estado_pedido));
   const completados = pedidos.filter((p) => ["completado", "entregado"].includes(p.estado_pedido));
+
+  const handleLlegue = async (pedidoId) => {
+    // Por ahora, simplemente cambiar el estado a en_camino en el frontend
+    // O si necesitas hacerlo en backend, llamar a un endpoint
+    const pedido = pedidos.find(p => p.pedido_id === pedidoId);
+    if (pedido && pedido.estado_pedido === "listo") {
+      // Aquí iría la lógica para marcar como "llegué"
+      // Por ahora lo saltamos y vamos directamente a confirmar
+      const updated = { ...pedido, estado_pedido: "en_camino" };
+      setSelectedPedido(updated);
+      setDialogOpen(true);
+    }
+  };
+
+  const handleConfirmarClick = (pedido) => {
+    setSelectedPedido(pedido);
+    setCodigoConfirm("");
+    setConfirmError("");
+    setConfirmSuccess(false);
+    setDialogOpen(true);
+  };
+
+  const handleConfirmSubmit = async () => {
+    if (!codigoConfirm.trim()) {
+      setConfirmError("Ingresa el código de entrega.");
+      return;
+    }
+    
+    setConfirmLoading(true);
+    setConfirmError("");
+    
+    try {
+      await repartidorService.confirmarEntrega(codigoConfirm);
+      setConfirmSuccess(true);
+      setCodigoConfirm("");
+      
+      setTimeout(() => {
+        setDialogOpen(false);
+        reload();
+      }, 1500);
+    } catch (e) {
+      setConfirmError(e.response?.data?.error || "Error al confirmar la entrega.");
+    } finally {
+      setConfirmLoading(false);
+    }
+  };
+
+  const handleDialogClose = () => {
+    if (!confirmLoading) {
+      setDialogOpen(false);
+      setSelectedPedido(null);
+      setCodigoConfirm("");
+      setConfirmError("");
+      setConfirmSuccess(false);
+    }
+  };
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5, pb: 4 }}>
@@ -245,7 +339,8 @@ export default function RutaRepartidorView() {
             <PedidoCard
               key={p.pedido_id}
               p={p}
-              onConfirmar={(id) => navigate("/repartidor/confirmar", { state: { pedidoId: id } })}
+              onLlegue={handleLlegue}
+              onConfirmarClick={handleConfirmarClick}
             />
           ))}
         </Box>
@@ -291,6 +386,117 @@ export default function RutaRepartidorView() {
           </Box>
         </>
       )}
+
+      {/* DIALOG DE CONFIRMACIÓN */}
+      <Dialog open={dialogOpen} onClose={handleDialogClose} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ fontFamily: "sans-serif", fontWeight: 700, fontSize: 16, color: "#0D1B2E" }}>
+          Confirmar Entrega
+        </DialogTitle>
+        <DialogContent dividers sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+          {selectedPedido && (
+            <>
+              {/* Datos del pedido */}
+              <Box>
+                <Typography sx={{ fontFamily: "sans-serif", fontWeight: 700, fontSize: 13, color: "#4A5B72", mb: 1 }}>
+                  Información del Pedido
+                </Typography>
+                <Paper elevation={0} sx={{ p: 1.5, background: alpha("#023C81", 0.04), borderRadius: 2 }}>
+                  <Typography sx={{ fontFamily: "sans-serif", fontWeight: 600, fontSize: 14, color: "#0D1B2E" }}>
+                    📦 {selectedPedido.folio}
+                  </Typography>
+                  <Typography sx={{ fontFamily: "sans-serif", fontSize: 12, color: "#4A5B72", mt: 0.5 }}>
+                    {selectedPedido.productos}
+                  </Typography>
+                  <Typography sx={{ fontFamily: "sans-serif", fontSize: 12, color: "#4A5B72", mt: 0.5 }}>
+                    Total: <strong>${Number(selectedPedido.total).toFixed(2)}</strong>
+                  </Typography>
+                </Paper>
+              </Box>
+
+              {/* Datos del cliente */}
+              <Box>
+                <Typography sx={{ fontFamily: "sans-serif", fontWeight: 700, fontSize: 13, color: "#4A5B72", mb: 1 }}>
+                  Cliente
+                </Typography>
+                <Paper elevation={0} sx={{ p: 1.5, background: alpha("#25D366", 0.04), borderRadius: 2 }}>
+                  <Typography sx={{ fontFamily: "sans-serif", fontWeight: 600, fontSize: 13, color: "#0D1B2E" }}>
+                    👤 {selectedPedido.cliente}
+                  </Typography>
+                  {selectedPedido.whatsapp && (
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 0.8, mt: 0.8 }}>
+                      <WhatsAppIcon sx={{ color: "#25D366", fontSize: 16 }} />
+                      <Typography sx={{ fontFamily: "sans-serif", fontSize: 12, color: "#25D366", fontWeight: 600 }}>
+                        {selectedPedido.whatsapp}
+                      </Typography>
+                    </Box>
+                  )}
+                </Paper>
+              </Box>
+
+              {/* Código de confirmación */}
+              <TextField
+                fullWidth
+                label="Código de Entrega"
+                placeholder="Ej: 142"
+                value={codigoConfirm}
+                onChange={(e) => {
+                  setCodigoConfirm(e.target.value);
+                  setConfirmError("");
+                }}
+                disabled={confirmLoading || confirmSuccess}
+                type="text"
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <TagIcon sx={{ color: "#023C81", fontSize: 18 }} />
+                    </InputAdornment>
+                  ),
+                }}
+                sx={{
+                  "& .MuiOutlinedInput-root": {
+                    "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+                      borderColor: "#023C81", borderWidth: 2,
+                    },
+                  },
+                }}
+              />
+
+              {/* Error message */}
+              {confirmError && (
+                <Alert severity="error" onClose={() => setConfirmError("")}>
+                  {confirmError}
+                </Alert>
+              )}
+
+              {/* Success message */}
+              {confirmSuccess && (
+                <Alert severity="success">
+                  ✅ Entrega confirmada correctamente
+                </Alert>
+              )}
+            </>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button onClick={handleDialogClose} disabled={confirmLoading}>
+            Cancelar
+          </Button>
+          <Button
+            variant="contained"
+            onClick={handleConfirmSubmit}
+            disabled={confirmLoading || confirmSuccess || !codigoConfirm.trim()}
+            startIcon={confirmLoading ? <CircularProgress size={18} sx={{ color: "#fff" }} /> : <CheckCircleIcon />}
+            sx={{
+              background: "linear-gradient(135deg, #18A558, #0D7A3E)",
+              color: "#fff",
+              fontFamily: "sans-serif",
+              fontWeight: 700,
+            }}
+          >
+            {confirmLoading ? "Confirmando..." : "Confirmar"}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

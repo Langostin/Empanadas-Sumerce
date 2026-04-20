@@ -3,6 +3,8 @@ const express = require("express");
 const cors    = require("cors");
 const bcrypt  = require("bcrypt");
 require("dotenv").config();
+const http = require("http");
+const { Server } = require("socket.io");
 
 const { q } = require("./db");
 const authRouter = require("./routes/auth");
@@ -12,8 +14,19 @@ const repartidorRouter  = require("./routes/repartidor");
 const { requireAuth, requireRole } = require("./middleware/requireAuth");
 
 const app = express();
+const httpServer = http.createServer(app);
+const io = new Server(httpServer, {
+  cors: { origin: process.env.FRONTEND_URL || "http://localhost:5173", credentials: true }
+});
+
 app.use(cors({ origin: process.env.FRONTEND_URL || "http://localhost:5173", credentials: true }));
 app.use(express.json());
+
+// Socket.io middleware to accessible in routes
+app.use((req, res, next) => {
+  req.io = io;
+  next();
+});
 
 // ══════════════════════════════════════════════════════════════
 //  AUTH — rutas públicas
@@ -266,105 +279,7 @@ app.get("/api/roles", async (_, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// ══════════════════════════════════════════════════════════════
-//  COCINA — Panel de producción
-// ══════════════════════════════════════════════════════════════
-app.get("/api/cocina/cola", requireRole("cocina", "administrador"), async (_, res) => {
-  try {
-    const [pedidos, resumen] = await Promise.all([
-      q(`SELECT TOP 50 p.pedido_id, p.folio, p.whatsapp, c.nombre, c.apellidos,
-                p.detalles, p.estado_pedido, p.fecha_pedido, p.tipo_entrega,
-                ISNULL(e.nombre + ' ' + ISNULL(e.apellidos,''), 'Sin asignar') AS cocinero_actual
-         FROM Pedido p
-         LEFT JOIN Cliente c ON p.whatsapp = c.whatsapp
-         LEFT JOIN Empleado e ON p.empleado_id = e.empleado_id
-         WHERE p.estado_pedido IN ('pendiente', 'en_preparacion')
-         ORDER BY p.fecha_pedido ASC`),
-      q(`SELECT COUNT(CASE WHEN estado_pedido='pendiente' THEN 1 END) AS pendientes,
-                COUNT(CASE WHEN estado_pedido='en_preparacion' THEN 1 END) AS en_proceso,
-                ISNULL(SUM(CAST(JSON_VALUE(p.detalles,'$.cantidad') AS INT)),0) AS total_empanadas_pendientes
-         FROM Pedido p
-         WHERE p.estado_pedido IN ('pendiente', 'en_preparacion')`),
-    ]);
-    res.json({
-      pedidos: pedidos.recordset,
-      resumen: resumen.recordset[0] || { pendientes: 0, en_proceso: 0, total_empanadas_pendientes: 0 },
-    });
-  } catch (err) { res.status(500).json({ error: err.message }); }
-});
-
-app.get("/api/cocina/metricas/hoy", requireRole("cocina", "administrador"), async (_, res) => {
-  try {
-    const [produccion, tiempos, capacidad, insumosCriticos] = await Promise.all([
-      q(`SELECT COUNT(*) AS empanadas_producidas, COUNT(DISTINCT pedido_id) AS pedidos_completados
-         FROM Pedido
-         WHERE CAST(fecha_pedido AS DATE) = CAST(GETDATE() AS DATE)
-           AND estado_pedido = 'entregado'`),
-      q(`SELECT ISNULL(AVG(DATEDIFF(minute, fecha_pedido, fecha_entrega)), 0) AS min_promedio_produccion,
-                MIN(DATEDIFF(minute, fecha_pedido, fecha_entrega)) AS min_mas_rapido
-         FROM Pedido
-         WHERE CAST(fecha_pedido AS DATE) = CAST(GETDATE() AS DATE)
-           AND estado_pedido = 'entregado'`),
-      q(`SELECT COUNT(*) AS empanadas_vendidas,
-                ISNULL(MAX(JSON_VALUE(detalles,'$.limite')),9999) AS limite_empanadas,
-                CASE WHEN COUNT(*) >= ISNULL(MAX(JSON_VALUE(detalles,'$.limite')),9999) THEN 0 ELSE 1 END AS acepta_pedidos
-         FROM Pedido
-         WHERE CAST(fecha_pedido AS DATE) = CAST(GETDATE() AS DATE)
-           AND estado_pedido IN ('entregado','en_preparacion','pendiente')`),
-      q(`SELECT COUNT(*) AS insumos_criticos
-         FROM Insumo
-         WHERE stock <= stock_minimo`),
-    ]);
-    res.json({
-      produccion: produccion.recordset[0],
-      tiempos: tiempos.recordset[0],
-      capacidad: capacidad.recordset[0],
-      insumos_criticos: insumosCriticos.recordset[0]?.insumos_criticos || 0,
-    });
-  } catch (err) { res.status(500).json({ error: err.message }); }
-});
-
-app.get("/api/cocina/historial/hoy", requireRole("cocina", "administrador"), async (_, res) => {
-  try {
-    const r = await q(`SELECT TOP 30 p.pedido_id, p.folio, p.whatsapp, c.nombre, c.apellidos,
-                              p.detalles, p.estado_pedido, p.fecha_pedido, p.fecha_entrega,
-                              DATEDIFF(minute, p.fecha_pedido, p.fecha_entrega) AS minutos_produccion
-                       FROM Pedido p
-                       LEFT JOIN Cliente c ON p.whatsapp = c.whatsapp
-                       WHERE CAST(p.fecha_pedido AS DATE) = CAST(GETDATE() AS DATE)
-                         AND p.estado_pedido = 'entregado'
-                       ORDER BY p.fecha_entrega DESC`);
-    res.json(r.recordset);
-  } catch (err) { res.status(500).json({ error: err.message }); }
-});
-
-app.get("/api/cocina/insumos-criticos", requireRole("cocina", "administrador"), async (_, res) => {
-  try {
-    const r = await q(`SELECT insumo_id, nombre, stock, stock_minimo, unidad
-                       FROM Insumo
-                       WHERE stock <= stock_minimo AND activo = 1
-                       ORDER BY stock ASC`);
-    res.json(r.recordset);
-  } catch (err) { res.status(500).json({ error: err.message }); }
-});
-
-app.patch("/api/cocina/pedidos/:id/estado", requireRole("cocina", "administrador"), async (req, res) => {
-  try {
-    const pedidoId = parseInt(req.params.id);
-    const { accion, observaciones } = req.body;
-    
-    let nuevoEstado = "pendiente";
-    if (accion === "aceptar") nuevoEstado = "en_preparacion";
-    if (accion === "listo") nuevoEstado = "completado";
-    if (accion === "cancelar") nuevoEstado = "cancelado";
-    
-    await q(
-      `UPDATE Pedido SET estado_pedido = @estado, fecha_entrega = CASE WHEN @estado='completado' THEN GETDATE() ELSE fecha_entrega END WHERE pedido_id = @id`,
-      { estado: nuevoEstado, id: pedidoId }
-    );
-    res.json({ ok: true });
-  } catch (err) { res.status(500).json({ error: err.message }); }
-});
+// ── Redundant Kitchen routes removed (already handled in routes/cocina.js) ──
 
 // ══════════════════════════════════════════════════════════════
 //  PEDIDOS
@@ -392,4 +307,4 @@ app.get("/api/pedidos", requireRole("administrador", "cocina", "repartidor"), as
 });
 
 const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => console.log(`✅ API corriendo en http://localhost:${PORT}`));
+httpServer.listen(PORT, () => console.log(`✅ Servidor con WebSockets en http://localhost:${PORT}`));

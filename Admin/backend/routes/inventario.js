@@ -5,11 +5,12 @@ const { requireRole } = require("../middleware/requireAuth");
 
 const router = express.Router();
 const admin  = requireRole("administrador");
+const adminOrCocina = requireRole("administrador", "cocina", "vendedor");
 
 // ══════════════════════════════════════════════════════════════
 //  i. PRODUCTOS EN EXISTENCIA — todos los insumos con stock
 // ══════════════════════════════════════════════════════════════
-router.get("/insumos", admin, async (req, res) => {
+router.get("/insumos", adminOrCocina, async (req, res) => {
   try {
     const { search = "" } = req.query;
     const r = await q(
@@ -98,7 +99,7 @@ router.put("/insumos/:id", admin, async (req, res) => {
 // ══════════════════════════════════════════════════════════════
 //  ii. COMPRAS URGENTES — stock ≤ mínimo
 // ══════════════════════════════════════════════════════════════
-router.get("/stock-critico", admin, async (req, res) => {
+router.get("/stock-critico", adminOrCocina, async (req, res) => {
   try {
     const r = await q(
       `SELECT TOP (100) PERCENT
@@ -129,7 +130,7 @@ router.get("/stock-critico", admin, async (req, res) => {
 });
 
 // ── Registrar movimiento de inventario (compra / ajuste / merma) ─
-router.post("/movimientos", admin, async (req, res) => {
+router.post("/movimientos", adminOrCocina, async (req, res) => {
   try {
     const { insumo_id, tipo_mov_id, cantidad, costo_unitario, motivo, proveedor_id } = req.body;
     const empleadoId = req.user.empleadoId;
@@ -174,7 +175,7 @@ router.post("/movimientos", admin, async (req, res) => {
 });
 
 // ── Historial de movimientos de un insumo ─────────────────────
-router.get("/movimientos/:insumo_id", admin, async (req, res) => {
+router.get("/movimientos/:insumo_id", adminOrCocina, async (req, res) => {
   try {
     const id = parseInt(req.params.insumo_id);
     const r = await q(
@@ -463,21 +464,21 @@ router.get("/cortes/historico", admin, async (req, res) => {
 });
 
 // ── Catálogos auxiliares ────────────────────────────────────────
-router.get("/unidades-medida", admin, async (_, res) => {
+router.get("/unidades-medida", adminOrCocina, async (_, res) => {
   try {
     const r = await q(`SELECT unidad_id, clave, nombre FROM UnidadMedida ORDER BY unidad_id`);
     res.json(r.recordset);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-router.get("/tipos-movimiento", admin, async (_, res) => {
+router.get("/tipos-movimiento", adminOrCocina, async (_, res) => {
   try {
     const r = await q(`SELECT tipo_mov_id, nombre, es_entrada FROM TipoMovimientoInventario ORDER BY tipo_mov_id`);
     res.json(r.recordset);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-router.get("/proveedores", admin, async (_, res) => {
+router.get("/proveedores", adminOrCocina, async (_, res) => {
   try {
     const r = await q(`SELECT proveedor_id, nombre, telefono, email FROM Proveedor WHERE activo=1 ORDER BY nombre`);
     res.json(r.recordset);
