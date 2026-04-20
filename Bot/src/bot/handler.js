@@ -29,12 +29,23 @@ function buildResumen(data) {
   const tipoMap    = { emp_carne: "Carne 🥩", emp_pollo: "Pollo 🍗", emp_ambas: "Mixta 🍽️" }
   const entregaMap = { entrega_domicilio: "A domicilio 🏠", entrega_tienda: "En tienda 🏪" }
   const pagoMap    = { pago_efectivo: "Efectivo 💵", pago_tarjeta: "Tarjeta 💳" }
-  const subtotal   = (data.cantidad || 0) * 25
+  
+  // Calcular totales de empanadas
+  const totalEmpanadas = (data.empanadas || []).reduce((sum, e) => sum + e.cantidad, 0)
+  const subtotal = totalEmpanadas * 25
 
   let r = `📋 *Resumen de tu pedido:*\n`
   r += `• 👤 Cliente: ${data.nombre || "Sin nombre"}\n`
-  r += `• 🥟 Empanada: ${tipoMap[data.tipo] || data.tipo || "—"}\n`
-  r += `• 🔢 Cantidad: ${data.cantidad || "—"}\n`
+  
+  // Mostrar desglose de empanadas
+  if (data.empanadas && data.empanadas.length > 0) {
+    r += `• 🥟 Empanadas:\n`
+    for (const emp of data.empanadas) {
+      r += `   - ${emp.cantidad}x ${tipoMap[emp.tipo] || emp.tipo}\n`
+    }
+  }
+  
+  r += `• 🔢 Total: ${totalEmpanadas} empanadas\n`
   r += `• 💰 Subtotal: $${subtotal} MXN\n`
   r += `• 🚚 Entrega: ${entregaMap[data.entrega] || data.entrega || "—"}\n`
   if (data.direccion) r += `• 📍 Dirección: ${data.direccion}\n`
@@ -124,7 +135,7 @@ async function handleMessage(sock, msg) {
           return sendAudio(sock, jid, "pedir_nombre", GUIAS.pedir_nombre())
         }
         session.step = "tipo_empanada"
-        session.data = { tipoOrden: "individual", nombre: cliente.nombre }
+        session.data = { tipoOrden: "individual", nombre: cliente.nombre, empanadas: [] }
         await saveSession(jid, session)
         return sendAudio(sock, jid, "pedir_empanada", GUIAS.pedir_empanada(), () => MENUS.tipoEmpanada(sock, jid))
 
@@ -171,9 +182,18 @@ async function handleMessage(sock, msg) {
         return sendText(sock, jid,
           `🍽️ *Nuestros productos:*\n\n🥩 Empanada de carne — $25 MXN\n🍗 Empanada de pollo — $25 MXN\n\n` +
           `📦 *Paquetes:*\n• 3 → $70 MXN\n• 6 → $135 MXN\n• 12 → $260 MXN\n\n` +
-          `🎁 *Primera compra:* ¡Lleva 2 y te regalamos 1!\n\nEscribe *menú* para volver.`)
+          `Escribe *menú* para volver.`)
       } else if (resolvedText === "info_ubicacion") {
-        return sendText(sock, jid, `📍 *Dónde estamos:*\nCalle Ejemplo #123, Col. Centro\nCiudad Juárez, Chihuahua\n\nEscribe *menú*.`)
+        await sendText(sock, jid, `📍 *Dónde estamos:*\nAvenida Universidad #123, Col. Lote Bravo\nCiudad Juárez, Chihuahua`)
+        await new Promise(r => setTimeout(r, 500))
+        await sock.sendMessage(jid, {
+          location: {
+            degreesLatitude: 31.599556,
+            degreesLongitude: -106.405363,
+          }
+        })
+        await new Promise(r => setTimeout(r, 300))
+        return sendText(sock, jid, `Escribe *menú*.`)
       } else if (resolvedText === "info_horario") {
         return sendText(sock, jid, `🕐 *Horario:*\nLun–Vie: 10:00–20:00\nSáb: 10:00–18:00\nDom: Cerrado 😴\n\nEscribe *menú*.`)
       } else if (resolvedText === "contacto") {
@@ -206,6 +226,7 @@ async function handleMessage(sock, msg) {
           `¡Listo *${nombre}*! 👍\n¿Cuántas empanadas necesitas para el evento?\nEscribe el número aproximado:`)
       }
       session.step = "tipo_empanada"
+      session.data.empanadas = session.data.empanadas || []
       await saveSession(jid, session)
       return sendAudio(sock, jid, "nombre_registrado", GUIAS.nombre_registrado(nombre), () => MENUS.tipoEmpanada(sock, jid))
     }
@@ -213,7 +234,7 @@ async function handleMessage(sock, msg) {
     // ──────────────────────────── PEDIDO ────────────────────────
     case "tipo_empanada": {
       if (["emp_carne","emp_pollo","emp_ambas"].includes(resolvedText)) {
-        session.data.tipo = resolvedText
+        session.data.tipoSeleccionado = resolvedText
         session.step = "cantidad"
         await saveSession(jid, session)
         return sendAudio(sock, jid, "pedir_cantidad", GUIAS.pedir_cantidad(resolvedText), () => MENUS.cantidad(sock, jid))
@@ -223,20 +244,32 @@ async function handleMessage(sock, msg) {
 
     case "cantidad": {
       const cantMap = { cant_1:1, cant_3:3, cant_6:6, cant_12:12 }
+      let cantidad = null
+      
       if (resolvedText === "cant_custom") {
         session.step = "cantidad_custom"
         await saveSession(jid, session)
-        return sendText(sock, jid, `✏️ ¡Listo parcero! Escríbame *exactamente cuántas empanadas* quiere (solo el número):`)
+        return sendText(sock, jid, `✏️ ¡Listo parcero! Escríbame *exactamente cuántas empanadas* quiere de este sabor (solo el número):`)
       } else if (cantMap[resolvedText]) {
-        session.data.cantidad = cantMap[resolvedText]
-        session.step = "entrega"
-        await saveSession(jid, session)
-        return sendAudio(sock, jid, "pedir_entrega", GUIAS.pedir_entrega(cantMap[resolvedText]), () => MENUS.entrega(sock, jid))
+        cantidad = cantMap[resolvedText]
       } else if (!isNaN(parseInt(text)) && parseInt(text) > 0) {
-        session.data.cantidad = parseInt(text)
-        session.step = "entrega"
+        cantidad = parseInt(text)
+      }
+      
+      if (cantidad !== null) {
+        // Buscar si ya existe el sabor y sumar cantidades
+        const sabor = session.data.empanadas.find(e => e.tipo === session.data.tipoSeleccionado)
+        if (sabor) {
+          sabor.cantidad += cantidad
+        } else {
+          session.data.empanadas.push({ tipo: session.data.tipoSeleccionado, cantidad })
+        }
+        const totalEmpanadas = session.data.empanadas.reduce((sum, e) => sum + e.cantidad, 0)
+        
+        // Preguntar si quiere agregar más sabores
+        session.step = "agregar_mas_sabores"
         await saveSession(jid, session)
-        return sendAudio(sock, jid, "pedir_entrega", GUIAS.pedir_entrega(parseInt(text)), () => MENUS.entrega(sock, jid))
+        return MENUS.agregar_mas_sabores(sock, jid, totalEmpanadas)
       }
       return sendAudio(sock, jid, "no_entendi", GUIAS.no_entendi("cantidad"), () => MENUS.cantidad(sock, jid))
     }
@@ -244,12 +277,48 @@ async function handleMessage(sock, msg) {
     case "cantidad_custom": {
       const n = parseInt(text)
       if (!isNaN(n) && n > 0) {
-        session.data.cantidad = n
-        session.step = "entrega"
+        // Buscar si ya existe el sabor y sumar cantidades
+        const sabor = session.data.empanadas.find(e => e.tipo === session.data.tipoSeleccionado)
+        if (sabor) {
+          sabor.cantidad += n
+        } else {
+          session.data.empanadas.push({ tipo: session.data.tipoSeleccionado, cantidad: n })
+        }
+        const totalEmpanadas = session.data.empanadas.reduce((sum, e) => sum + e.cantidad, 0)
+        
+        // Preguntar si quiere agregar más sabores
+        session.step = "agregar_mas_sabores"
         await saveSession(jid, session)
-        return sendAudio(sock, jid, "pedir_entrega", GUIAS.pedir_entrega(n), () => MENUS.entrega(sock, jid))
+        return MENUS.agregar_mas_sabores(sock, jid, totalEmpanadas)
       }
       return sendText(sock, jid, `¡Uy juepucha! Escriba *solo el número* de empanadas que quiere, ej: *5*`)
+    }
+
+    case "agregar_mas_sabores": {
+      const totalEmpanadas = session.data.empanadas.reduce((sum, e) => sum + e.cantidad, 0)
+      
+      if (resolvedText === "agregar_si") {
+        // Validar que no se superen 60 empanadas
+        if (totalEmpanadas >= 60) {
+          await resetSession(jid)
+          return sendText(sock, jid, 
+            `⚠️ *¡Máximo alcanzado!* 🔒\n\nYa tienes ${totalEmpanadas} empanadas. El límite es 60 empanadas por pedido.\n\n` +
+            `Si necesitas más, por favor contacta a través de nuestro número de teléfono para una cotización especial.\n\n` +
+            `Escribe *menú* para comenzar un nuevo pedido.`)
+        }
+        session.step = "tipo_empanada"
+        await saveSession(jid, session)
+        return sendAudio(sock, jid, "pedir_empanada", `¡Listo! ¿Qué otro sabor quieres agregar?\n\nYa tienes ${totalEmpanadas} empanadas.`, () => MENUS.tipoEmpanada(sock, jid))
+      } else if (resolvedText === "agregar_no") {
+        // Validar que haya al menos 1 empanada
+        if (session.data.empanadas.length === 0) {
+          return sendText(sock, jid, `¡Ay parcero! Debes seleccionar al menos un sabor de empanada.`)
+        }
+        session.step = "entrega"
+        await saveSession(jid, session)
+        return sendAudio(sock, jid, "pedir_entrega", GUIAS.pedir_entrega(totalEmpanadas), () => MENUS.entrega(sock, jid))
+      }
+      return MENUS.agregar_mas_sabores(sock, jid, totalEmpanadas)
     }
 
     case "evento_cantidad": {
@@ -440,15 +509,20 @@ async function handleMessage(sock, msg) {
     case "confirmar": {
       const palabrasSi = ["sí","si","yes","confirmar","confirmo","dale","listo","va","ok"]
       if (palabrasSi.some(k => text.includes(k))) {
-        const productoMap = { emp_carne: 1, emp_pollo: 2 }
+        const productoMap = { emp_carne: 1, emp_pollo: 2, emp_ambas: 3 }
         const items = []
-        if (session.data.tipo === "emp_ambas") {
-          const mitad = Math.ceil((session.data.cantidad || 1) / 2)
-          const resto = Math.floor((session.data.cantidad || 1) / 2)
-          if (mitad > 0) items.push({ productoId: 1, cantidad: mitad })
-          if (resto > 0) items.push({ productoId: 2, cantidad: resto })
-        } else {
-          items.push({ productoId: productoMap[session.data.tipo] || 1, cantidad: session.data.cantidad || 1 })
+        
+        // Procesar múltiples sabores de empanadas
+        for (const emp of session.data.empanadas) {
+          if (emp.tipo === "emp_ambas") {
+            // Dividir la cantidad entre carne y pollo
+            const mitad = Math.ceil(emp.cantidad / 2)
+            const resto = Math.floor(emp.cantidad / 2)
+            if (mitad > 0) items.push({ productoId: 1, cantidad: mitad })
+            if (resto > 0) items.push({ productoId: 2, cantidad: resto })
+          } else {
+            items.push({ productoId: productoMap[emp.tipo] || 1, cantidad: emp.cantidad })
+          }
         }
 
         const metodoPagoId = session.data.pago === "pago_efectivo" ? 1 : 2
@@ -478,7 +552,10 @@ async function handleMessage(sock, msg) {
 
           if (metodoPagoId !== 1) {
             try {
-              const descripcion = items.map(i => `${i.cantidad}x Empanada`).join(", ")
+              const descripcion = session.data.empanadas.map(e => {
+                const tipoNom = { emp_carne: "Carne", emp_pollo: "Pollo", emp_ambas: "Mixta" }[e.tipo]
+                return `${e.cantidad}x ${tipoNom}`
+              }).join(", ")
               const pago = await stripe.crearLinkPago({
                 pedidoId:    resultado.pedidoId,
                 folio:       resultado.folio,
@@ -525,11 +602,19 @@ async function handleMessage(sock, msg) {
       const cal = calMap[resolvedText] || parseInt(text)
       if (cal >= 1 && cal <= 5) {
         try { await db.guardarCalificacionEntrega(session.data.pedidoId, cal) } catch {}
-        session.step = "inicio"
+        session.step = "comentario_tiempo"
         await saveSession(jid, session)
-        return sendText(sock, jid, `⭐ ¡Gracias por su calificación de entrega (${cal}/5), parcero!\nEscribe *menú* para volver.`)
+        return sendText(sock, jid, `⭐ ¡Gracias por la calificación de entrega (${cal}/5)!\n\nPor favor, déjanos un breve comentario o sugerencia sobre cómo fue la entrega de tu pedido:`)
       }
       return MENUS.calificacion(sock, jid, "tiempo")
+    }
+
+    case "comentario_tiempo": {
+      try { await db.guardarComentarioTiempo(session.data.pedidoId, rawText.trim()) } catch {}
+      session.step = "calificar_producto"
+      await saveSession(jid, session)
+      await sendText(sock, jid, `¡Anotado! 📝 Ahora hablemos de las empanadas. 🥟`)
+      return MENUS.calificacion(sock, jid, "producto")
     }
 
     case "calificar_producto": {
@@ -540,13 +625,18 @@ async function handleMessage(sock, msg) {
           await db.guardarCalificacionProducto(session.data.pedidoId, cal)
           await db.marcarOpinionSolicitada(session.data.pedidoId)
         } catch {}
-        session.step = "inicio"
+        session.step = "comentario_producto"
         await saveSession(jid, session)
-        return sendText(sock, jid, cal >= 4
-          ? `⭐ ¡Qué chimba que le gustaron! (${cal}/5) 🇨🇴🥟\nEscribe *menú* cuando quiera pedir de nuevo.`
-          : `⭐ Gracias por su honestidad (${cal}/5). ¡Trabajaremos para mejorar! 💪\nEscribe *menú* para volver.`)
+        return sendText(sock, jid, `⭐ ¡Entendido (${cal}/5)!\n\nPor último, cuéntanos qué te pareció el sabor o si tienes alguna sugerencia de mejora:`)
       }
       return MENUS.calificacion(sock, jid, "producto")
+    }
+
+    case "comentario_producto": {
+      try { await db.guardarComentarioProducto(session.data.pedidoId, rawText.trim()) } catch {}
+      session.step = "inicio"
+      await saveSession(jid, session)
+      return sendText(sock, jid, `✅ ¡Muchísimas gracias por tu valiosa retroalimentación, parcero!\nEsto nos ayuda enormemente a mejorar. 🇨🇴🥟\n\nEscribe *menú* cuando quieras hacer otro pedido.`)
     }
 
     // ──────────────────────────── PAGO FALLIDO ───────────────────

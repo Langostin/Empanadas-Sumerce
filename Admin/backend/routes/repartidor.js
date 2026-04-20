@@ -222,19 +222,19 @@ router.post("/escanear", async (req, res) => {
 router.post("/confirmar", async (req, res) => {
   try {
     const repartidorId = req.user.empleadoId;
-    const { pedido_id, codigo_confirmacion } = req.body;
+    const { codigo } = req.body; // 👈 YA NO pedido_id
 
-    if (!pedido_id) {
-      return res.status(400).json({ error: "Se requiere el ID del pedido." });
+    if (!codigo) {
+      return res.status(400).json({ error: "Se requiere el código de entrega." });
     }
 
-    // Verificar que el pedido pertenece al repartidor
+    // 🔍 Buscar pedido por código (VARCHAR)
     const pedidoR = await q(
       `SELECT pedido_id, folio, estado_pedido, repartidor_id,
               codigo_entrega_sistema, codigo_entrega_repartidor
        FROM Pedido
-       WHERE pedido_id = @pid`,
-      { pid: parseInt(pedido_id) }
+       WHERE codigo_entrega_sistema = @codigo`,
+      { codigo }
     );
 
     if (!pedidoR.recordset.length) {
@@ -243,36 +243,41 @@ router.post("/confirmar", async (req, res) => {
 
     const pedido = pedidoR.recordset[0];
 
+    // 🔐 Validar repartidor
     if (pedido.repartidor_id !== repartidorId) {
       return res.status(403).json({ error: "No tienes permiso para confirmar este pedido." });
     }
 
+    // ⚠️ Validar estado
     if (pedido.estado_pedido === "entregado" || pedido.estado_pedido === "completado") {
       return res.status(400).json({ error: "Este pedido ya fue entregado." });
     }
 
-    // Si hay código de confirmación, verificarlo
-    if (pedido.codigo_entrega_sistema && codigo_confirmacion) {
-      if (codigo_confirmacion !== pedido.codigo_entrega_sistema) {
-        return res.status(400).json({ error: "Código de confirmación incorrecto." });
-      }
-    }
-
+    // ✅ Actualizar pedido
     await q(
       `UPDATE Pedido
        SET estado_pedido = 'entregado',
            entregado = 1,
            fecha_entrega_real = GETDATE(),
            codigo_entrega_repartidor = @codigo
-       WHERE pedido_id = @pid`,
-      {
-        pid: parseInt(pedido_id),
-        codigo: codigo_confirmacion || null,
-      }
+       WHERE codigo_entrega_sistema = @codigo`,
+      { codigo }
     );
+
+    // 🔔 Notificar al Bot mediante Webhook HTTP
+    try {
+      await fetch("http://localhost:3000/webhook/admin/entregado", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pedido_id: pedido.pedido_id })
+      });
+    } catch (whErr) {
+      console.warn("⚠️ No se pudo notificar al bot (webhook):", whErr.message);
+    }
 
     res.json({ ok: true, folio: pedido.folio });
   } catch (err) {
+    console.error("ERROR CONFIRMAR:", err);
     res.status(500).json({ error: err.message });
   }
 });

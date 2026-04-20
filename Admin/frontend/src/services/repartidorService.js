@@ -19,9 +19,8 @@ export const repartidorService = {
     api.post("/repartidor/escanear", { qr_codigo }).then((r) => r.data),
 
   // Confirmar entrega
-  confirmarEntrega: (pedido_id, codigo_confirmacion) =>
-    api
-      .post("/repartidor/confirmar", { pedido_id, codigo_confirmacion })
+confirmarEntrega: (codigo) =>
+  api.post("/repartidor/confirmar", { codigo })
       .then((r) => r.data),
 
   // Gastos

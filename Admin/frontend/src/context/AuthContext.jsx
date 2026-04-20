@@ -7,8 +7,9 @@ const AuthContext = createContext(null);
 // Mapa de roles → ruta de inicio tras el login
 export const ROL_DEFAULT_ROUTE = {
   administrador: "/",
-  cocina:        "/cocina",      // vista futura
-  repartidor:    "/repartidor",  // vista futura
+  cocina:        "/cocina",      
+  repartidor:    "/repartidor",  
+  vendedor:      "/vendedor",
 };
 
 export function AuthProvider({ children }) {

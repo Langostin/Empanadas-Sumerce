@@ -21,16 +21,16 @@ module.exports = {
 
   // ── Stripe ────────────────────────────────────────────────────
   stripe: {
-    secretKey:     process.env.STRIPE_SECRET_KEY     || "",
-    webhookSecret: process.env.STRIPE_WEBHOOK_SECRET || "",
-    publicKey:     process.env.STRIPE_PUBLIC_KEY     || "",
+    secretKey:     process.env.STRIPE_SECRET_KEY,
+    webhookSecret: process.env.STRIPE_WEBHOOK_SECRET,
+    publicKey:     process.env.STRIPE_PUBLIC_KEY,
   },
 
   // ── Facturama ─────────────────────────────────────────────────
   facturama: {
-    sandbox:  process.env.FACTURAMA_SANDBOX !== "false",
-    user:     process.env.FACTURAMA_USER || "pruebas",
-    password: process.env.FACTURAMA_PASS || "pruebas2011",
+    sandbox:  process.env.FACTURAMA_SANDBOX,
+    user:     process.env.FACTURAMA_USER,
+    password: process.env.FACTURAMA_PASS,
   },
 
   // ── Emisor fiscal (el negocio) ────────────────────────────────
@@ -44,6 +44,6 @@ module.exports = {
   // ── Gemini IA ─────────────────────────────────────────────────
   gemini: {
     apiKey:    process.env.GEMINI_API_KEY || "",
-    noAiMode:  true,   // ← true = sin IA | false = con Gemini TTS
+    noAiMode:  true, // Si es true, NO se harán llamadas a Gemini. 
   },
 }

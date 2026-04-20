@@ -26,6 +26,9 @@ import GastosView from "../views/Repartidor/GastosVIew";
 import HistorialView from "../views/Repartidor/HistorialView";
 import EscanearView from "../views/Repartidor/EscanearView";
 
+import VentaView from "../views/Vendedor/VentaView";
+import EntregasView from "../views/Vendedor/EntregasView";
+
 export default function AppRoutes() {
   return (
     <Routes>
@@ -89,6 +92,19 @@ export default function AppRoutes() {
           <Route path="/repartidor/mapa" element={<MapaView />} />
           <Route path="/repartidor/gastos" element={<GastosView />} />
           <Route path="/repartidor/historial" element={<HistorialView />} />
+      </Route>
+
+      {/* ── VENDEDOR ──────────────────────────── */}
+      <Route
+        element={
+          <ProtectedRoute roles={["vendedor", "administrador"]}>
+            <AppLayout />
+          </ProtectedRoute>
+        }
+      >
+        <Route path="/vendedor" element={<Navigate to="/vendedor/venta" replace />} />
+        <Route path="/vendedor/venta" element={<VentaView />} />
+        <Route path="/vendedor/entregas" element={<EntregasView />} />
       </Route>
 
       {/* ── Fallback ─────────────────────────── */}

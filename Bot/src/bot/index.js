@@ -41,6 +41,40 @@ app.post("/webhook/stripe", express.raw({ type: "application/json" }), async (re
   }
 })
 
+// Webhook Interno Admin -> Bot para notificar entregas
+app.post("/webhook/admin/entregado", express.json(), async (req, res) => {
+  const { pedido_id } = req.body
+  if (!pedido_id) return res.status(400).json({ error: "Falta pedido_id" })
+  
+  try {
+    const det = await db.getDetallePedido(pedido_id)
+    if (det && det.pedido) {
+      const esEfectivo = det.pedido.metodo_pago_id === 1
+      await notif.notificarEntrega(pedido_id, esEfectivo)
+    }
+    res.json({ ok: true })
+  } catch (err) {
+    console.error("❌ Error en webhook entregado:", err.message)
+    res.status(500).json({ error: err.message })
+  }
+})
+
+// Webhook Interno Admin -> Bot para notificar Venta POS local (con factura/ticket requerido)
+app.post("/webhook/admin/venta_pos", express.json(), async (req, res) => {
+  const { pedido_id } = req.body
+  if (!pedido_id) return res.status(400).json({ error: "Falta pedido_id" })
+  
+  try {
+    // Al originarse en terminal, el vendedor ya cobró, mandamos comprobantes directo.
+    // Llamaos a notificarPagoExitoso que ya tiene toda la logica de factura/xml
+    await notif.notificarPagoExitoso(pedido_id)
+    res.json({ ok: true })
+  } catch (err) {
+    console.error("❌ Error en webhook venta_pos:", err.message)
+    res.status(500).json({ error: err.message })
+  }
+})
+
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
 
@@ -66,12 +100,27 @@ app.get("/pago/exito", async (req, res) => {
       try {
         const det = await db.getDetallePedido(pedidoId)
         if (det?.pedido?.requiere_factura && det?.pedido?.dato_fiscal_id && !det?.pedido?.qr_generado) {
-          const f = await factura.generarFactura(pedidoId)
-          facturaHtml = `<hr><p><strong>🧾 Factura generada</strong></p>
-            <p style="font-family:monospace;background:#f5f5f5;padding:8px">UUID: ${f.uuid}</p>
-            <p><a href="/factura/${pedidoId}/pdf">📄 PDF</a> &nbsp; <a href="/factura/${pedidoId}/xml">🗂 XML</a></p>`
+          try {
+            const f = await factura.generarFactura(pedidoId)
+            facturaHtml = `<hr><p><strong>🧾 Factura generada</strong></p>
+              <p style="font-family:monospace;background:#f5f5f5;padding:8px">UUID: ${f.uuid}</p>
+              <p><a href="/factura/${pedidoId}/pdf">📄 PDF</a> &nbsp; <a href="/factura/${pedidoId}/xml">🗂 XML</a></p>`
+            
+            // 📱 Enviar PDF y XML por WhatsApp
+            await notif.notificarFacturaExitosa(pedidoId, {
+              uuid: f.uuid,
+              cfdiId: f.cfdiId,
+              folio: f.folio,
+              total: f.total,
+              rfc: f.rfc,
+            })
+          } catch (fe) {
+            console.warn("⚠️ Factura automática:", fe.message)
+            // 📱 Notificar el error por WhatsApp
+            await notif.notificarErrorFactura(pedidoId, fe.message)
+          }
         }
-      } catch (fe) { console.warn("⚠️ Factura automática:", fe.message) }
+      } catch (err) { console.warn("⚠️ Error obteniendo detalles del pedido:", err.message) }
 
       return res.send(`<!DOCTYPE html><html lang="es"><head>
         <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">

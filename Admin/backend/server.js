@@ -28,6 +28,7 @@ app.use("/api/inventario", inventarioRouter);
 
 app.use("/api/cocina",      cocinaRouter);
 app.use("/api/repartidor",  repartidorRouter);
+app.use("/api/vendedor",    require("./routes/vendedor"));
 // ══════════════════════════════════════════════════════════════
 //  DASHBOARD
 // ══════════════════════════════════════════════════════════════

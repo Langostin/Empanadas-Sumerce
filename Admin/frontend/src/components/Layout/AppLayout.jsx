@@ -37,6 +37,10 @@ const getPageTitle = (path) => {
   if (path.startsWith("/repartidor/gastos")) return { title: "Gastos de Ruta", subtitle: "Registra y consulta tus gastos operativos" };
   if (path.startsWith("/repartidor/historial")) return { title: "Historial de Entregas", subtitle: "Registro de pedidos entregados" };
 
+  // Vendedor
+  if (path.startsWith("/vendedor/venta")) return { title: "Punto de Venta", subtitle: "Crea órdenes locales y efectúa el cobro" };
+  if (path.startsWith("/vendedor/entregas")) return { title: "Entregas Locales", subtitle: "Gestiona las órdenes presenciales, retiros en tienda y a domicilio" };
+
   return PAGE_TITLES["/"];
 };
 
@@ -44,6 +48,7 @@ const ROL_CHIP_COLORS = {
   administrador: { bg: alpha("#023C81", 0.10), color: "#023C81" },
   cocina:        { bg: alpha("#FF9800", 0.10), color: "#E65100" },
   repartidor:    { bg: alpha("#18A558", 0.10), color: "#0A7A3A" },
+  vendedor:      { bg: alpha("#9C27B0", 0.10), color: "#7B1FA2" },
 };
 
 export default function AppLayout() {

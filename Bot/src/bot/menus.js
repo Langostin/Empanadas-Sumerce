@@ -25,18 +25,18 @@ const MENUS = {
     body:  "¿Qué hacemos hoy?",
     sections: [
       { title: "Pedidos", rows: [
-        { title: "1. Orden individual",   description: "Empanadas para ti" },
-        { title: "2. Pedido para evento", description: "Cotización en cantidad" },
+        { title: "Orden individual",   description: "Empanadas para ti" },
+        { title: "Pedido para evento", description: "Cotización en cantidad" },
       ]},
       { title: "Mi cuenta", rows: [
-        { title: "3. Mis pedidos", description: "Ver historial" },
-        { title: "4. Mis datos",   description: "Ver mis datos guardados" },
+        { title: "Mis pedidos", description: "Ver historial" },
+        { title: "Mis datos",   description: "Ver mis datos guardados" },
       ]},
       { title: "Info", rows: [
-        { title: "5. Productos y precios", description: "¿Qué vendemos?" },
-        { title: "6. Dónde estamos",       description: "Dirección" },
-        { title: "7. Horario",             description: "¿Cuándo estamos abiertos?" },
-        { title: "8. Contacto",            description: "Hablar con un humano" },
+        { title: "Productos y precios", description: "¿Qué vendemos?" },
+        { title: "Dónde estamos",       description: "Dirección" },
+        { title: "Horario",             description: "¿Cuándo estamos abiertos?" },
+        { title: "Contacto",            description: "Hablar con un humano" },
       ]},
     ],
   }),
@@ -55,11 +55,20 @@ const MENUS = {
     title: "¿Cuántas empanadas? 🔢",
     body:  "Selecciona o escribe el número:",
     sections: [{ title: "Cantidades", rows: [
-      { title: "1. Una (1)",       description: "$25 MXN" },
-      { title: "2. Tres (3)",      description: "$70 MXN" },
-      { title: "3. Seis (6)",      description: "$135 MXN" },
-      { title: "4. Doce (12)",     description: "$260 MXN" },
-      { title: "5. Otra cantidad", description: "Escribe el número que quieras" },
+      { title: "Una (1)",       description: "$25 MXN" },
+      { title: "Tres (3)",      description: "$70 MXN" },
+      { title: "Seis (6)",      description: "$135 MXN" },
+      { title: "Doce (12)",     description: "$260 MXN" },
+      { title: "Otra cantidad", description: "Escribe el número que quieras" },
+    ]}],
+  }),
+
+  agregar_mas_sabores: (sock, jid, totales) => sendMenu(sock, jid, {
+    title: "¿Agregar otro sabor? 🥟",
+    body:  `Ya tienes ${totales} empanadas. Máximo permitido: 60`,
+    sections: [{ title: "Opciones", rows: [
+      { title: "Sí, agregar otro sabor", description: "Añade más variedades" },
+      { title: "No, continuar con la entrega", description: "Proceder con el pedido" },
     ]}],
   }),
 
@@ -67,8 +76,8 @@ const MENUS = {
     title: "¿Cómo recibe su pedido? 🚚",
     body:  "Elige la forma de entrega:",
     sections: [{ title: "Opciones", rows: [
-      { title: "1. A domicilio 🏠",       description: "Te lo llevamos" },
-      { title: "2. Recoger en tienda 🏪", description: "Pasas tú por él" },
+      { title: "A domicilio 🏠",       description: "Te lo llevamos" },
+      { title: "Recoger en tienda 🏪", description: "Pasas tú por él" },
     ]}],
   }),
 
@@ -76,8 +85,8 @@ const MENUS = {
     title: "Método de pago 💳",
     body:  "¿Cómo va a pagar?",
     sections: [{ title: "Opciones", rows: [
-      { title: "1. Efectivo 💵",                 description: "Pagas al recibir" },
-      { title: "2. Tarjeta (débito/crédito) 💳", description: "Link de pago seguro" },
+      { title: "Efectivo 💵",                 description: "Pagas al recibir" },
+      { title: "Tarjeta (débito/crédito) 💳", description: "Link de pago seguro" },
     ]}],
   }),
 
@@ -85,8 +94,8 @@ const MENUS = {
     title: "¿Necesita factura? 🧾",
     body:  "¿Requiere CFDI?",
     sections: [{ title: "Opciones", rows: [
-      { title: "1. Sí, necesito factura", description: "Le pedimos datos del SAT" },
-      { title: "2. No, gracias",          description: "Continúa sin factura" },
+      { title: "Sí, necesito factura", description: "Le pedimos datos del SAT" },
+      { title: "No, gracias",          description: "Continúa sin factura" },
     ]}],
   }),
 
@@ -128,6 +137,7 @@ const NUMERIC_MAPS = {
   inicio:                 ["orden_individual","orden_evento","mis_pedidos","mis_datos","info_productos","info_ubicacion","info_horario","contacto"],
   tipo_empanada:          ["emp_carne","emp_pollo","emp_ambas"],
   cantidad:               ["cant_1","cant_3","cant_6","cant_12","cant_custom"],
+  agregar_mas_sabores:    ["agregar_si","agregar_no"],
   entrega:                ["entrega_domicilio","entrega_tienda"],
   pago:                   ["pago_efectivo","pago_tarjeta"],
   factura:                ["factura_si","factura_no"],

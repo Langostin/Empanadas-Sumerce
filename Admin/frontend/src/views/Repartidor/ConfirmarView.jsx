@@ -24,7 +24,7 @@ export default function ConfirmarView() {
     setError("");
     setExito(null);
     try {
-      const data = await repartidorService.confirmarEntrega(parseInt(pedidoId));
+      const data = await repartidorService.confirmarEntrega(pedidoId);
       setExito(data);
       setPedidoId("");
     } catch (e) {
@@ -64,12 +64,16 @@ export default function ConfirmarView() {
           placeholder="Ej: 142"
           value={pedidoId}
           onChange={(e) => {
-            setPedidoId(e.target.value.replace(/\D/g, ""));
+            const limpio = e.target.value
+              .replace(/[^a-zA-Z0-9]/g, "") // solo letras y números
+              .toUpperCase();              // convertir a MAYÚSCULAS
+
+            setPedidoId(limpio);
             setError("");
             setExito(null);
           }}
           onKeyDown={handleKey}
-          type="number"
+          type="text"
           disabled={cargando}
           InputProps={{
             startAdornment: (

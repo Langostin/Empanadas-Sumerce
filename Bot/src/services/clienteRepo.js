@@ -323,9 +323,19 @@ async function guardarCalificacionEntrega(pedidoId, calificacion, comentario = n
     { pid: pedidoId, cal: calificacion, com: comentario })
 }
 
+async function guardarComentarioTiempo(pedidoId, comentario) {
+  await query(`UPDATE Pedido SET comentario_tiempo=@com WHERE pedido_id=@pid`,
+    { pid: pedidoId, com: comentario })
+}
+
 async function guardarCalificacionProducto(pedidoId, calificacion, comentario = null) {
   await query(`UPDATE Pedido SET calificacion_producto=@cal, comentario_producto=@com WHERE pedido_id=@pid`,
     { pid: pedidoId, cal: calificacion, com: comentario })
+}
+
+async function guardarComentarioProducto(pedidoId, comentario) {
+  await query(`UPDATE Pedido SET comentario_producto=@com WHERE pedido_id=@pid`,
+    { pid: pedidoId, com: comentario })
 }
 
 async function marcarOpinionSolicitada(pedidoId) {
@@ -384,7 +394,7 @@ module.exports = {
   crearPedido, getHistorialPedidos, getDetallePedido,
   crearPagoPasarela,
   confirmarEntrega, getCodigoEntrega,
-  guardarCalificacionEntrega, guardarCalificacionProducto, marcarOpinionSolicitada, pedidosSinOpinion,
+  guardarCalificacionEntrega, guardarComentarioTiempo, guardarCalificacionProducto, guardarComentarioProducto, marcarOpinionSolicitada, pedidosSinOpinion,
   getProductos, verificarCapacidadHoy,
   log, query,  
 }

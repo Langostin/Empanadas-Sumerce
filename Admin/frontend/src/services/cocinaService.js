@@ -31,4 +31,21 @@ export const cocinaService = {
   // Lista de cocineros disponibles
   getCocineros: () =>
     api.get("/cocina/cocineros").then((r) => r.data),
+
+  // ==========================
+// MERMAS
+// ==========================
+
+// Registrar merma
+registrarMerma: (data) =>
+  api.post("/cocina/mermas", data).then((r) => r.data),
+
+// Métricas de mermas (para tus stats)
+getMetricasMermasHoy: async () => {
+  const r = await api.get("/cocina/mermas/metricas/hoy");
+  return r.data.recordset ? r.data.recordset[0] : r.data;
+},
+// Listado de mermas
+getMermas: () =>
+  api.get("/cocina/mermas").then((r) => r.data),
 };

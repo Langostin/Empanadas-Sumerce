@@ -90,21 +90,24 @@ app.get("/test-factura", async (req, res) => {
     }
 
     // ── Crear factura ─────────────────────
-    const resp = await http.post("/api/3/cfdis/ ", cfdiPayload)
+const resp = await http.post("/api/3/cfdis", cfdiPayload)
 
-    const cfdi = resp.data
-    const cfdiId = cfdi.Id
-    const uuid = cfdi.Complement?.TaxStamp?.Uuid
+console.log("📄 RESPUESTA COMPLETA CFDI:")
+console.log(JSON.stringify(resp.data, null, 2))
 
-    const pdfUrl = `${BASE_URL}/cfdi/${cfdiId}/pdf`
+const cfdi = resp.data
+const cfdiId = cfdi.Id
+const uuid = cfdi.Complement?.TaxStamp?.Uuid
 
-    res.json({
-      ok: true,
-      modo: SANDBOX ? "sandbox" : "produccion",
-      uuid,
-      cfdiId,
-      pdfUrl,
-    })
+const pdfResp = await http.get(`/cfdi/pdf/issued/${cfdiId}`)
+
+const pdfBuffer = Buffer.from(pdfResp.data.Content, "base64")
+
+res.setHeader("Content-Type", "application/pdf")
+res.setHeader("Content-Disposition", `attachment; filename="factura-${uuid}.pdf"`)
+
+return res.send(pdfBuffer)
+
 
   } catch (err) {
     res.status(500).json({
@@ -113,6 +116,8 @@ app.get("/test-factura", async (req, res) => {
     })
   }
 })
+
+
 
 // ── Servidor ────────────────────────────────
 const PORT = process.env.PORT || 3000

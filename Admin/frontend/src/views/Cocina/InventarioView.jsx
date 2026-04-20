@@ -1,3 +1,5 @@
+import InventarioViewOriginal from "../Inventario/InventarioView";
+
 export default function InventarioView() {
-  return <h1>📦 Inventario funcionando</h1>;
+  return <InventarioViewOriginal />;
 }

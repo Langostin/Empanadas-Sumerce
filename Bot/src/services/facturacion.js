@@ -326,8 +326,8 @@ async function cancelarFactura(cfdiId, motivo = "02", uuidRelacionado = null) {
 // ══════════════════════════════════════════════════════════════════
 async function descargarPDF(cfdiId) {
   try {
-    const resp = await http.get(`/cfdi/${cfdiId}/pdf`, { responseType: "arraybuffer" })
-    return Buffer.from(resp.data)
+    const pdfResp = await http.get(`/cfdi/pdf/issued/${cfdiId}`)
+    return Buffer.from(pdfResp.data.Content, "base64")
   } catch (err) {
     throw new Error(`Error descargando PDF ${cfdiId}: ${err.response?.data?.message || err.message}`)
   }
@@ -338,8 +338,8 @@ async function descargarPDF(cfdiId) {
 // ══════════════════════════════════════════════════════════════════
 async function descargarXML(cfdiId) {
   try {
-    const resp = await http.get(`/cfdi/${cfdiId}/xml`, { responseType: "text" })
-    return resp.data
+    const xmlResp = await http.get(`/cfdi/xml/issued/${cfdiId}`)
+    return Buffer.from(xmlResp.data.Content, "base64")
   } catch (err) {
     throw new Error(`Error descargando XML ${cfdiId}: ${err.response?.data?.message || err.message}`)
   }
