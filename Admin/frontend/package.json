@@ -8,10 +8,11 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@emotion/react": "^11.13.3",
-    "@emotion/styled": "^11.13.0",
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.1",
     "@mui/icons-material": "^6.1.6",
     "@mui/material": "^6.1.6",
+    "@mui/system": "^9.0.0",
     "@mui/x-data-grid": "^7.20.0",
     "axios": "^1.7.7",
     "html5-qrcode": "^2.3.8",
