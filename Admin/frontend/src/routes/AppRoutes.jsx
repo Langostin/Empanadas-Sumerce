@@ -18,6 +18,8 @@ import EmpaqueView         from "../views/Cocina/EmpaqueView";
 import RutaView            from "../views/Cocina/RutaView";
 import ProveedoresView     from "../views/Cocina/ProveedoresView";
 import MermasView          from "../views/Cocina/MermasView";
+import InsumosView         from "../views/Cocina/InsumosView";
+
 
 import RutaRepartidorView from "../views/Repartidor/RutaRepartidorView";
 import ConfirmarView from "../views/Repartidor/ConfirmarView";
@@ -72,7 +74,9 @@ export default function AppRoutes() {
         <Route path="/cocina/ruta" element={<RutaView />} />
         <Route path="/cocina/proveedores" element={<ProveedoresView />} />
         <Route path="/cocina/mermas" element={<MermasView />} />
+        <Route path="/cocina/insumos" element={<InsumosView />} />
       </Route>
+
 
       {/* ── REPARTIDOR ────────────────────────── */}
       <Route

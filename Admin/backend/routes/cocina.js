@@ -195,44 +195,22 @@ router.patch("/pedidos/:id/estado", kitchenAccess, async (req, res) => {
     );
 
     // -------------------------
-    // 🚚 ASIGNAR REPARTIDOR Y GENERAR QR SI ESTÁ LISTO
+    // -------------------------
+    // 🚚 GENERAR QR SI ESTÁ LISTO (Sin auto-asignar repartidor)
     // -------------------------
     if (accion === "listo") {
-      // Generar código QR (UUID)
+      // Generar código QR (UUID) para que el repartidor lo escanee
       const qrCodigo = uuidv4();
 
-      const repartidorRes = await q(`
-        SELECT TOP 1 empleado_id
-        FROM Empleado
-        WHERE rol_id = 3 AND activo = 1
-        ORDER BY ultima_sesion ASC
-      `);
-
-      const repartidor = repartidorRes.recordset[0];
-
-      if (repartidor) {
-        await q(
-          `UPDATE Pedido
-           SET repartidor_id = @rid, qr_codigo = @qr, qr_generado = 1
-           WHERE pedido_id = @pid`,
-          {
-            rid: repartidor.empleado_id,
-            qr: qrCodigo,
-            pid: pedidoId,
-          }
-        );
-      } else {
-        // Aunque no haya repartidor disponible, generamos el QR
-        await q(
-          `UPDATE Pedido
-           SET qr_codigo = @qr, qr_generado = 1
-           WHERE pedido_id = @pid`,
-          {
-            qr: qrCodigo,
-            pid: pedidoId,
-          }
-        );
-      }
+      await q(
+        `UPDATE Pedido
+         SET qr_codigo = @qr, qr_generado = 1
+         WHERE pedido_id = @pid`,
+        {
+          qr: qrCodigo,
+          pid: pedidoId,
+        }
+      );
     }
 
     // -------------------------
@@ -253,6 +231,11 @@ router.patch("/pedidos/:id/estado", kitchenAccess, async (req, res) => {
         }),
       }
     );
+
+    // Emitir evento por WebSockets
+    if (accion === "listo") {
+      req.io.emit("pedido_actualizado", { pedido_id: pedidoId, estado: trans.estadoPedido });
+    }
 
     res.json({
       ok: true,

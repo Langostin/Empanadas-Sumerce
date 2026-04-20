@@ -7,8 +7,8 @@ const { sql, query, exec, getPool } = require("../db")
 // ══════════════════════════════════════════════════════════════════
 //  1. CLIENTE
 // ══════════════════════════════════════════════════════════════════
-async function upsertCliente({ whatsapp, nombre, apellidos, genero, email }) {
-  return exec("sp_UpsertCliente", { whatsapp, nombre, apellidos, genero, email })
+async function upsertCliente({ whatsapp, nombre, apellidos, genero, email, telefono }) {
+  return exec("sp_UpsertCliente", { whatsapp, nombre, apellidos, genero, email, telefono })
 }
 
 async function getCliente(whatsapp) {

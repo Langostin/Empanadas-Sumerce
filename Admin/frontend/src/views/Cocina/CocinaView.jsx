@@ -14,7 +14,6 @@ import RestaurantIcon        from "@mui/icons-material/RestaurantRounded";
 import { useColaCocina, useMetricasCocina } from "../../controllers/useCocina";
 import ColaTab        from "./tabs/ColaTab";
 import HistorialTab   from "./tabs/HistorialTab";
-import InsumosTab     from "./tabs/InsumosTab";
 
 // ── Tarjeta de métrica ─────────────────────────────────────────
 function MetricaCard({ label, value, color, icon, sub, loading }) {
@@ -184,14 +183,6 @@ export default function CocinaView() {
             }
           />
           <Tab label="Historial del día" />
-          <Tab
-            label={
-              <Badge badgeContent={criticos || null} color="error" max={99}
-                sx={{ "& .MuiBadge-badge": { fontSize: 9, minWidth: 16, height: 16 } }}>
-                <Box sx={{ pr: criticos > 0 ? 1.5 : 0 }}>Insumos</Box>
-              </Badge>
-            }
-          />
         </Tabs>
       </Box>
 
@@ -204,7 +195,6 @@ export default function CocinaView() {
         />
       )}
       {tab === 1 && <HistorialTab />}
-      {tab === 2 && <InsumosTab   />}
     </Box>
   );
 }

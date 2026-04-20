@@ -36,6 +36,27 @@ function setSock(sock) {
 }
 
 // ══════════════════════════════════════════════════════════════════
+//  FORMATO JID
+// ══════════════════════════════════════════════════════════════════
+
+/**
+ * Formatea el número de WhatsApp al formato correcto para Baileys.
+ * Ejemplos:
+ *   "+573125551234" → "573125551234@s.whatsapp.net"
+ *   "573125551234" → "573125551234@s.whatsapp.net"
+ *   "573125551234@s.whatsapp.net" → "573125551234@s.whatsapp.net"
+ */
+function formatJid(whatsapp) {
+  if (!whatsapp) return ""
+  // Remover + si existe
+  let cleaned = whatsapp.replace(/^\+/, "")
+  // Si ya tiene @s.whatsapp.net, retornar como está
+  if (cleaned.includes("@")) return cleaned
+  // Agregar @s.whatsapp.net
+  return `${cleaned}@s.whatsapp.net`
+}
+
+// ══════════════════════════════════════════════════════════════════
 //  PAGO EXITOSO
 // ══════════════════════════════════════════════════════════════════
 
@@ -69,7 +90,7 @@ async function notificarPagoExitoso(pedidoId) {
       return
     }
 
-    const jid    = pedido.whatsapp
+    const jid    = formatJid(pedido.whatsapp)
     const nombre = pedido.cliente_nombre || "parcero"
 
     // ── Mensaje de texto principal ────────────────────────────
@@ -196,7 +217,7 @@ async function notificarPagoFallido(pedidoId) {
       return
     }
 
-    const jid    = pedido.whatsapp
+    const jid    = formatJid(pedido.whatsapp)
     const nombre = pedido.cliente_nombre || "parcero"
 
     // Guardar en sesión que estamos esperando respuesta por pago fallido
@@ -263,7 +284,7 @@ async function notificarFacturaExitosa(pedidoId, facturaData) {
       return
     }
 
-    const jid    = pedido.whatsapp
+    const jid    = formatJid(pedido.whatsapp)
     const nombre = pedido.cliente_nombre || "parcero"
 
     // ── Mensaje de texto con detalles de la factura ───────────
@@ -356,7 +377,7 @@ async function notificarErrorFactura(pedidoId, errorMsg) {
       return
     }
 
-    const jid    = pedido.whatsapp
+    const jid    = formatJid(pedido.whatsapp)
     const nombre = pedido.cliente_nombre || "parcero"
 
     // ── Mensaje de error ──────────────────────────────────────
@@ -422,7 +443,7 @@ async function notificarEntrega(pedidoId, esEfectivo) {
     const pedido = res.recordset[0]
     if (!pedido) return
 
-    const jid = pedido.whatsapp
+    const jid = formatJid(pedido.whatsapp)
     const nombre = pedido.cliente_nombre || "parcero"
 
     if (esEfectivo) {

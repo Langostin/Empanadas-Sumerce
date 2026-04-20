@@ -117,8 +117,6 @@ return res.send(pdfBuffer)
   }
 })
 
-
-
 // ── Servidor ────────────────────────────────
 const PORT = process.env.PORT || 3000
 app.listen(PORT, () => {

@@ -115,6 +115,12 @@ router.post("/crear_venta", requireAuth, async (req, res) => {
     const pedidoId = invRes.recordset[0].pedido_id;
     const folio = invRes.recordset[0].folio;
 
+    // 5.5. Actualizar total_gastado y total_pedidos del cliente
+    await q(
+      `UPDATE Cliente SET total_gastado = total_gastado + @total, total_pedidos = total_pedidos + 1 WHERE whatsapp = @wa`,
+      { wa, total }
+    );
+
     // 6. Insertar detalles del pedido
     for (let det of detalles) {
       await q(
@@ -143,6 +149,9 @@ router.post("/crear_venta", requireAuth, async (req, res) => {
         console.warn("⚠️ No se pudo notificar al bot para factura:", e.message);
       }
     }
+
+    // Emitir evento por WebSockets para Cocina
+    req.io.emit("pedido_nuevo", { pedido_id: pedidoId, folio });
 
     res.json({ ok: true, pedido_id: pedidoId, folio, total: dbSubtotal + dbIva });
   } catch (err) {

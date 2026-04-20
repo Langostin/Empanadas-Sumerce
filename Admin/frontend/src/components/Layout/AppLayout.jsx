@@ -22,6 +22,7 @@ const PAGE_TITLES = {
   "/pedidos":    { title: "Pedidos",             subtitle: "Historial y seguimiento" },
   "/inventario": { title: "Inventario",          subtitle: "Gestión de productos" },
   "/cocina":     { title: "Panel de Cocina",     subtitle: "Cola de producción y control de insumos" },
+  "/cocina/insumos": { title: "Gestión de Insumos", subtitle: "Control de materias primas y stock" },
 };
 
 const getPageTitle = (path) => {

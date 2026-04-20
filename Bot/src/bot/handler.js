@@ -211,9 +211,11 @@ async function handleMessage(sock, msg) {
       const partes    = nombreInput.split(" ").filter(Boolean)
       const nombre    = partes[0]
       const apellidos = partes.slice(1).join(" ") || null
+      const telefonoPlano = jid.split("@")[0]  // Extraer número plano de jid
+      
       try {
-        await db.upsertCliente({ whatsapp: jid, nombre, apellidos })
-        await db.log("INFO", "bot_whatsapp", "cliente_registrado", { whatsapp: jid, detalle: { nombre, apellidos } })
+        await db.upsertCliente({ whatsapp: jid, nombre, apellidos, telefono: telefonoPlano })
+        await db.log("INFO", "bot_whatsapp", "cliente_registrado", { whatsapp: jid, detalle: { nombre, apellidos, telefono: telefonoPlano } })
       } catch (err) { console.error("Error registrando nombre:", err.message) }
 
       session.data.nombre = nombre

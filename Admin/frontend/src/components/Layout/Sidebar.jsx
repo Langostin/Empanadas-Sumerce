@@ -3,8 +3,10 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { useTheme, useMediaQuery } from "@mui/material";
 import {
   Drawer, Box, List, ListItemButton, ListItemIcon, ListItemText,
-  Tooltip, Divider, Typography, IconButton
+  Tooltip, Divider, Typography, IconButton, Badge
 } from "@mui/material";
+import { useMetricasCocina } from "../../controllers/useCocina";
+
 import DashboardIcon    from "@mui/icons-material/SpaceDashboardRounded";
 import PeopleIcon       from "@mui/icons-material/PeopleAltRounded";
 import BadgeIcon        from "@mui/icons-material/BadgeRounded";
@@ -30,19 +32,20 @@ const NAV_BY_ROLE = {
     { label: "Empleados",  path: "/empleados", icon: <BadgeIcon /> },
     { label: "Pedidos",    path: "/pedidos",   icon: <ShoppingBagIcon /> },
     { label: "Inventario", path: "/inventario",icon: <DashboardIcon /> },
+
   ],
 
   cocina: [
     { label: "Órdenes en Cola", path: "/cocina/ordenes", icon: <ShoppingBagIcon /> },
     //{ label: "Inventario",      path: "/cocina/inventario", icon: <DashboardIcon /> },
-    { label: "Proveedores",     path: "/cocina/proveedores", icon: <PeopleIcon /> },
+    { label: "Insumos",          path: "/cocina/insumos", icon: <DashboardIcon /> },
     { label: "Mermas",          path: "/cocina/mermas", icon: <DashboardIcon /> },
+
   ],
 
 repartidor: [
   { label: "Escanear Pedido", path: "/repartidor/escanear", icon: <CameraAltIcon /> },
   { label: "Mis Entregas",    path: "/repartidor/ruta",     icon: <TwoWheelerIcon /> },
-  { label: "Confirmar",       path: "/repartidor/confirmar",icon: <CheckCircleIcon /> },
   { label: "Mapa",            path: "/repartidor/mapa",     icon: <MapIcon /> },
   { label: "Gastos",          path: "/repartidor/gastos",   icon: <LocalGasStationIcon /> },
   { label: "Historial",       path: "/repartidor/historial",icon: <HistoryIcon /> },
@@ -60,6 +63,10 @@ export default function Sidebar({ open, onToggle, rol }) {
   const { pathname } = useLocation();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
+  
+  // Badge de insumos críticos
+  const { metricas } = useMetricasCocina();
+  const criticos = metricas?.insumos_criticos ?? 0;
 
   return (
       <Drawer
@@ -148,8 +155,14 @@ export default function Sidebar({ open, onToggle, rol }) {
                     "& svg": { fontSize: 22 },
                   }}
                 >
-                  {icon}
+                  {label === "Insumos" ? (
+                    <Badge badgeContent={criticos} color="error" overlap="circular"
+                      sx={{ "& .MuiBadge-badge": { fontSize: 9, minWidth: 16, height: 16, top: 2, right: 2 } }}>
+                      {icon}
+                    </Badge>
+                  ) : icon}
                 </ListItemIcon>
+
                 {open && (
                   <ListItemText
                     primary={label}
