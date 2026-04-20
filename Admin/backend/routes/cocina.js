@@ -213,7 +213,7 @@ router.patch("/pedidos/:id/estado", kitchenAccess, async (req, res) => {
       if (repartidor) {
         await q(
           `UPDATE Pedido
-           SET repartidor_id = @rid, qr_codigo = @qr
+           SET repartidor_id = @rid, qr_codigo = @qr, qr_generado = 1
            WHERE pedido_id = @pid`,
           {
             rid: repartidor.empleado_id,
@@ -225,7 +225,7 @@ router.patch("/pedidos/:id/estado", kitchenAccess, async (req, res) => {
         // Aunque no haya repartidor disponible, generamos el QR
         await q(
           `UPDATE Pedido
-           SET qr_codigo = @qr
+           SET qr_codigo = @qr, qr_generado = 1
            WHERE pedido_id = @pid`,
           {
             qr: qrCodigo,

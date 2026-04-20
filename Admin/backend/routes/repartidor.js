@@ -19,7 +19,7 @@ router.get("/mis-pedidos", async (req, res) => {
          p.pedido_id, p.folio, p.whatsapp,
          ISNULL(c.nombre + ' ' + ISNULL(c.apellidos,''), p.whatsapp) AS cliente,
          p.estado_pedido, p.total, p.fecha_pedido,
-         p.tipo_entrega, p.qr_codigo, p.qr_generado,
+         p.tipo_entrega, p.qr_codigo,
          dc.calle, dc.numero_exterior, dc.colonia, dc.ciudad,
          dc.latitud, dc.longitud,
          ISNULL(dc.calle + ' ' + ISNULL(dc.numero_exterior,'') + ', ' + ISNULL(dc.colonia,''), 'Sin dirección') AS direccion_texto,
@@ -36,7 +36,7 @@ router.get("/mis-pedidos", async (req, res) => {
          p.pedido_id, p.folio, p.whatsapp,
          c.nombre, c.apellidos,
          p.estado_pedido, p.total, p.fecha_pedido,
-         p.tipo_entrega, p.qr_codigo, p.qr_generado,
+         p.tipo_entrega, p.qr_codigo,
          dc.calle, dc.numero_exterior, dc.colonia, dc.ciudad,
          dc.latitud, dc.longitud
        ORDER BY p.fecha_pedido DESC`,
@@ -53,7 +53,7 @@ router.get("/mis-pedidos", async (req, res) => {
 // ══════════════════════════════════════════════════════════════
 router.get("/mapa", async (req, res) => {
   try {
-    const repartidorId = req.user.empleado_id;
+    const repartidorId = req.user.empleadoId;
     const r = await q(
       `SELECT
          p.pedido_id, p.folio, p.estado_pedido,
@@ -66,6 +66,7 @@ router.get("/mapa", async (req, res) => {
        LEFT JOIN Cliente c           ON p.whatsapp     = c.whatsapp
        LEFT JOIN DireccionCliente dc ON p.direccion_id = dc.direccion_id
        WHERE p.repartidor_id = @rid
+         AND p.tipo_entrega = 'domicilio'
          AND p.estado_pedido IN ('listo','en_camino')
          AND dc.latitud IS NOT NULL
          AND dc.longitud IS NOT NULL`,
@@ -157,7 +158,7 @@ router.post("/escanear", async (req, res) => {
     const pedidoR = await q(
       `SELECT
          p.pedido_id, p.folio, p.whatsapp, p.estado_pedido,
-         p.repartidor_id, p.qr_generado,
+         p.repartidor_id,
          ISNULL(c.nombre + ' ' + ISNULL(c.apellidos,''), p.whatsapp) AS cliente,
          p.total, p.tipo_entrega,
          ISNULL(dc.calle + ' ' + ISNULL(dc.numero_exterior,'') + ', ' + ISNULL(dc.colonia,''), 'Sin dirección') AS direccion_texto,
@@ -171,7 +172,7 @@ router.post("/escanear", async (req, res) => {
        WHERE p.qr_codigo = @qr
        GROUP BY
          p.pedido_id, p.folio, p.whatsapp, p.estado_pedido,
-         p.repartidor_id, p.qr_generado,
+         p.repartidor_id,
          c.nombre, c.apellidos, p.total, p.tipo_entrega,
          dc.calle, dc.numero_exterior, dc.colonia`,
       { qr: qr_codigo }

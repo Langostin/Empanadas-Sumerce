@@ -3,7 +3,6 @@ const router = express.Router();
 const { q } = require("../db");
 
 // Middleware to parse JSON is already in server.js
-// requireAuth is also applied in server.js ideally or we can just assume it.
 const { requireAuth } = require("../middleware/requireAuth");
 
 // ── 1. GET /productos ──
@@ -24,120 +23,130 @@ router.post("/crear_venta", requireAuth, async (req, res) => {
   if (!items || items.length === 0) return res.status(400).json({ error: "Carrito vacío" });
 
   try {
-    // 1. Obtener info de usuario/empleado si es necesario, pero canal es local.
-    // Creamos pedido como 'local' y tipo entrega 'local'.
-    
-    // Si requiere factura, validar e insertar en DatoFiscalCliente (o manejar a nivel bot)
-    // Pero en nuestra base, Pedido acepta "whatsapp" NOT NULL.
-    // Los pedidos locales podrían ser para un "mostrador" (ej. WA 0000000000).
+    // 1. Validar datos mínimos
+    if (!clienteNombre || !clienteNombre.trim()) {
+      return res.status(400).json({ error: "Nombre de cliente requerido" });
+    }
+
     const wa = datos_fiscales?.whatsapp || "0000000000";
 
-    // Si requirió factura explícitamente, registramos los datos fiscales primero.
+    // 2. Asegurar que existe el cliente
+    await q(
+      `IF NOT EXISTS (SELECT 1 FROM Cliente WHERE whatsapp=@wa)
+       BEGIN
+         INSERT INTO Cliente (whatsapp, nombre) VALUES (@wa, @nom)
+       END`,
+      { wa, nom: clienteNombre }
+    );
+
+    // 3. Registrar datos fiscales si es requerido
     let dato_fiscal_id = null;
     if (requiere_factura && datos_fiscales) {
-      // Necesitamos registrar dato fiscal. Aseguremos que exista el cliente fake si no existe.
-      await q(
-        `IF NOT EXISTS (SELECT 1 FROM Cliente WHERE whatsapp=@wa)
-         BEGIN
-           INSERT INTO Cliente (whatsapp, nombre) VALUES (@wa, @nom)
-         END`, { wa, nom: clienteNombre || "Mostrador" }
-      );
-
       const rfRes = await q(
         `INSERT INTO DatoFiscalCliente (whatsapp, rfc, razon_social, codigo_postal, regimen_id, es_predeterminado)
          OUTPUT INSERTED.dato_fiscal_id
          VALUES (@wa, @rfc, @rs, @cp, (SELECT regimen_id FROM RegimenFiscal WHERE clave=@reg), 1)`,
         { 
           wa, 
-          rfc: datos_fiscales.rfc, 
-          rs: datos_fiscales.razonSocial, 
-          cp: datos_fiscales.codigoPostal, 
+          rfc: (datos_fiscales.rfc || "").substring(0, 13).trim(), 
+          rs: (datos_fiscales.razonSocial || clienteNombre).substring(0, 255), 
+          cp: (datos_fiscales.codigoPostal || "00000").substring(0, 10), 
           reg: datos_fiscales.regimenClave || "616" 
         }
       );
-      dato_fiscal_id = rfRes[0]?.dato_fiscal_id;
+      dato_fiscal_id = rfRes.recordset[0]?.dato_fiscal_id;
     }
 
-    // 2. Insert Pedido principal
-    // subtotal, iva se calculan en la iteración.
-    let subtotal = 0;
-    let iva = 0;
+    // 4. Calcular totales de items
+    let dbSubtotal = 0;
+    let dbIva = 0;
+    const detalles = [];
 
     for (let item of items) {
-      subtotal += item.subtotal;
-      // Cálculo simplificado de IVA para guardar rápido, aunque en POS ya viene calculado.
-      // Aquí confiaremos en regenerarlo para seguridad usando query a DB.
+      const pr = await q(
+        `SELECT precio_actual, aplica_iva, tasa_iva FROM Producto WHERE producto_id=@id`, 
+        { id: item.producto_id }
+      );
+      
+      if (pr.recordset.length > 0) {
+        const p = pr.recordset[0];
+        const lineSubtotal = p.precio_actual * item.cantidad;
+        const lineIva = p.aplica_iva ? lineSubtotal * p.tasa_iva : 0;
+        dbSubtotal += lineSubtotal;
+        dbIva += lineIva;
+        
+        detalles.push({
+          producto_id: item.producto_id,
+          cantidad: item.cantidad,
+          precio_unitario: p.precio_actual,
+          aplica_iva: p.aplica_iva ? 1 : 0,
+          iva_monto: lineIva
+        });
+      }
     }
 
-    // Usaremos un sp_CrearPedido manual o el existente del Bot?
-    // Mejor lo hacemos manual aquí por ser POS.
+    const total = dbSubtotal + dbIva;
+
+    // 5. Crear pedido
     const invRes = await q(
       `INSERT INTO Pedido (
          whatsapp, tipo_pedido, tipo_entrega, metodo_pago_id, 
          estado_pago, requiere_factura, dato_fiscal_id, subtotal, iva, descuento,
          estado_pedido, codigo_entrega_sistema, entregado, canal,
-         es_cotizacion, cotizacion_atendida, qr_generado, fecha_pedido
+         es_cotizacion, cotizacion_atendida, fecha_pedido
        ) OUTPUT INSERTED.pedido_id, INSERTED.folio
        VALUES (
-         @wa, 'inmediato', 'local', @mp,
-         'pagado', @rf, @dfid, 0, 0, 0,
-         'creado', @codigo, 0, 'local',
-         0, 0, 0, GETDATE()
+         @wa, 'individual', 'tienda', @mp,
+         'pagado', @rf, @dfid, @sub, @iva, 0,
+         'recibido', @codigo, 0, 'presencial',
+         0, 0, GETDATE()
        )`,
       {
         wa,
-        mp: metodo_pago_id,
+        mp: metodo_pago_id || 1,
         rf: requiere_factura ? 1 : 0,
         dfid: dato_fiscal_id,
-        codigo: clienteNombre.substring(0, 10) // Guardamos el nombre como identificador local
+        sub: dbSubtotal,
+        iva: dbIva,
+        codigo: clienteNombre.substring(0, 6).toUpperCase()
       }
     );
 
-    const pedidoId = invRes[0].pedido_id;
-    const folio = invRes[0].folio;
+    const pedidoId = invRes.recordset[0].pedido_id;
+    const folio = invRes.recordset[0].folio;
 
-    // 3. Insert items
-    let dbSubtotal = 0;
-    let dbIva = 0;
-    for (let item of items) {
-       const pr = await q(`SELECT precio_actual, aplica_iva, tasa_iva FROM Producto WHERE producto_id=@id`, { id: item.producto_id });
-       if (pr.length > 0) {
-         const p = pr[0];
-         const lineSubtotal = p.precio_actual * item.cantidad;
-         const lineIva = p.aplica_iva ? lineSubtotal * p.tasa_iva : 0;
-         dbSubtotal += lineSubtotal;
-         dbIva += lineIva;
-
-         await q(
-           `INSERT INTO DetallePedido (pedido_id, producto_id, cantidad, precio_unitario, aplica_iva, iva_monto)
-            VALUES (@pid, @prodid, @cant, @precio, @aplica, @ivamonto)`,
-           {
-             pid: pedidoId, prodid: item.producto_id, cant: item.cantidad,
-             precio: p.precio_actual, aplica: p.aplica_iva ? 1 : 0, ivamonto: lineIva
-           }
-         );
-       }
+    // 6. Insertar detalles del pedido
+    for (let det of detalles) {
+      await q(
+        `INSERT INTO DetallePedido (pedido_id, producto_id, cantidad, precio_unitario, aplica_iva, iva_monto)
+         VALUES (@pid, @prodid, @cant, @precio, @aplica, @ivamonto)`,
+        {
+          pid: pedidoId,
+          prodid: det.producto_id,
+          cant: det.cantidad,
+          precio: det.precio_unitario,
+          aplica: det.aplica_iva,
+          ivamonto: det.iva_monto
+        }
+      );
     }
 
-    // 4. Actualizar totales del pedido
-    await q(`UPDATE Pedido SET subtotal=@sub, iva=@iva WHERE pedido_id=@pid`, { sub: dbSubtotal, iva: dbIva, pid: pedidoId });
-
-    // 5. Si requiere factura y es en efectivo (u otra forma si se soporta), disparamos webhook al bot
-    if (requiere_factura && metodo_pago_id === 1) { // 1 = efectivo
-       try {
-         await fetch("http://localhost:3000/webhook/admin/venta_pos", {
-           method: "POST",
-           headers: { "Content-Type": "application/json" },
-           body: JSON.stringify({ pedido_id: pedidoId })
-         });
-       } catch (e) {
-         console.warn("No se pudo notificar al bot para la factura:", e.message);
-       }
+    // 7. Webhook para factura si aplica (enviar al bot Baileys)
+    if (requiere_factura) {
+      try {
+        await fetch("http://localhost:3000/webhook/admin/venta_pos", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ pedido_id: pedidoId })
+        });
+      } catch (e) {
+        console.warn("⚠️ No se pudo notificar al bot para factura:", e.message);
+      }
     }
 
     res.json({ ok: true, pedido_id: pedidoId, folio, total: dbSubtotal + dbIva });
   } catch (err) {
-    console.error(err);
+    console.error("❌ ERROR en crear_venta:", err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -146,9 +155,9 @@ router.post("/crear_venta", requireAuth, async (req, res) => {
 router.get("/pedidos_locales", requireAuth, async (req, res) => {
   try {
     const rs = await q(
-      `SELECT p.pedido_id, p.folio, p.fecha_pedido, p.total, p.codigo_entrega_sistema, p.estado_pedido
+      `SELECT p.pedido_id, p.folio, p.fecha_pedido, ISNULL(p.subtotal + p.iva, 0) AS total, p.codigo_entrega_sistema, p.estado_pedido
        FROM Pedido p 
-       WHERE p.canal='local' AND p.estado_pedido != 'entregado'
+       WHERE p.canal='presencial' AND p.estado_pedido = 'listo'
        ORDER BY p.fecha_pedido DESC`
     );
     res.json(rs.recordset);
@@ -175,10 +184,12 @@ router.post("/confirmar_local", requireAuth, async (req, res) => {
 router.get("/pedidos_domicilio", requireAuth, async (req, res) => {
   try {
     const rs = await q(
-      `SELECT pedido_id, folio, total, qr_codigo, fecha_pedido, estado_pedido
-       FROM Pedido 
-       WHERE tipo_entrega='domicilio' AND estado_pedido NOT IN ('entregado','cancelado')
-       ORDER BY fecha_pedido ASC`
+      `SELECT p.pedido_id, p.folio, p.total, p.qr_codigo, p.repartidor_id, p.fecha_pedido, p.estado_pedido, c.nombre AS cliente_nombre, ISNULL(c.apellidos, '') AS cliente_apellidos, d.calle, d.numero_exterior, d.colonia
+       FROM Pedido p 
+       LEFT JOIN Cliente c ON p.whatsapp = c.whatsapp
+       LEFT JOIN DireccionCliente d ON p.direccion_id = d.direccion_id
+       WHERE p.tipo_entrega='domicilio' AND p.estado_pedido = 'listo'
+       ORDER BY p.fecha_pedido ASC`
     );
     res.json(rs.recordset);
   } catch (err) { res.status(500).json({ error: err.message }); }
@@ -189,7 +200,7 @@ router.get("/pedidos_tienda", requireAuth, async (req, res) => {
     const rs = await q(
       `SELECT p.pedido_id, p.folio, p.total, p.codigo_entrega_sistema, p.fecha_pedido, p.estado_pedido, c.nombre AS cliente_nombre, ISNULL(c.apellidos, '') AS cliente_apellidos
        FROM Pedido p JOIN Cliente c ON p.whatsapp = c.whatsapp
-       WHERE p.tipo_entrega='tienda' AND p.estado_pedido NOT IN ('entregado','cancelado')
+       WHERE p.tipo_entrega='tienda' AND p.estado_pedido = 'listo'
        ORDER BY p.fecha_pedido ASC`
     );
     res.json(rs.recordset);
