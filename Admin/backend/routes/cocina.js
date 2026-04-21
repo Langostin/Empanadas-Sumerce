@@ -393,27 +393,137 @@ router.get("/cocineros", kitchenAccess, async (_, res) => {
 
 //mermas
 
+router.get("/mermas/cortes/:id/full", kitchenAccess, async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+
+    const corte = await q(`
+      SELECT * FROM CorteMerma WHERE corte_id = ${id}
+    `);
+
+    const detalle = await q(`
+      SELECT
+        COALESCE(i.nombre, p.nombre) AS nombre,
+        m.cantidad,
+        m.costo_total
+      FROM Merma m
+      LEFT JOIN Insumo i ON m.insumo_id = i.insumo_id
+      LEFT JOIN Producto p ON m.producto_id = p.producto_id
+      WHERE m.corte_id = ${id}
+    `);
+
+    res.json({
+      corte: corte.recordset[0],
+      detalle: detalle.recordset
+    });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+
+router.get("/mermas/cortes", kitchenAccess, async (_, res) => {
+  try {
+    const r = await q(`
+      SELECT *
+      FROM CorteMerma
+      ORDER BY fecha DESC
+    `);
+
+    res.json(r.recordset);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post("/mermas/corte", kitchenAccess, async (req, res) => {
+  try {
+    const empleado_id = req.user.empleadoId;
+
+    // 1. obtener mermas sin corte
+    const r = await q(`
+      SELECT 
+        COUNT(*) AS total_unidades,
+        ISNULL(SUM(costo_total),0) AS total_costo
+      FROM Merma
+      WHERE corte_id IS NULL
+    `);
+
+    const data = r.recordset[0];
+
+    if (data.total_unidades === 0) {
+      return res.status(400).json({
+        error: "No hay mermas para cortar"
+      });
+    }
+
+    // 2. crear corte
+    const insert = await q(`
+      INSERT INTO CorteMerma (
+        empleado_id,
+        fecha,
+        total_costo,
+        total_unidades,
+        observaciones
+      )
+      OUTPUT INSERTED.corte_id
+      VALUES (
+        @emp,
+        GETDATE(),
+        @costo,
+        @unidades,
+        'Corte de mermas'
+      )
+    `, {
+      emp: empleado_id,
+      costo: data.total_costo,
+      unidades: data.total_unidades
+    });
+
+    const corte_id = insert.recordset[0].corte_id;
+
+    // 3. asignar mermas al corte
+    await q(`
+      UPDATE Merma
+      SET corte_id = @corte
+      WHERE corte_id IS NULL
+    `, { corte: corte_id });
+
+    res.json({
+      ok: true,
+      corte_id
+    });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // LISTADO DE MERMAS
 router.get("/mermas", kitchenAccess, async (_, res) => {
   try {
-const r = await q(`
-SELECT
-  m.merma_id,
-  COALESCE(i.nombre, p.nombre) AS nombre,
-  CASE 
-    WHEN m.insumo_id IS NOT NULL THEN 'insumo'
-    WHEN m.producto_id IS NOT NULL THEN 'producto'
-  END AS tipo,
-  m.cantidad,
-  m.tipo_merma,
-  m.motivo,
-  m.costo_total,
-  m.fecha
-FROM Merma m
-LEFT JOIN Insumo i ON m.insumo_id = i.insumo_id
-LEFT JOIN Producto p ON m.producto_id = p.producto_id
-ORDER BY m.fecha DESC
-`);
+    const r = await q(`
+      SELECT
+        m.merma_id,
+        COALESCE(i.nombre, p.nombre) AS nombre,
+        CASE 
+          WHEN m.insumo_id IS NOT NULL THEN 'insumo'
+          WHEN m.producto_id IS NOT NULL THEN 'producto'
+        END AS tipo,
+        m.cantidad,
+        m.tipo_merma,
+        m.motivo,
+        m.costo_total,
+        m.fecha
+      FROM Merma m
+      LEFT JOIN Insumo i ON m.insumo_id = i.insumo_id
+      LEFT JOIN Producto p ON m.producto_id = p.producto_id
+      WHERE m.corte_id IS NULL
+      ORDER BY m.fecha DESC
+    `);
 
     res.json(r.recordset);
   } catch (err) {
@@ -430,7 +540,7 @@ router.get("/mermas/metricas/hoy", kitchenAccess, async (_, res) => {
         ISNULL(SUM(cantidad), 0) AS unidades,
         ISNULL(SUM(costo_total), 0) AS perdida
       FROM Merma
-      WHERE DATEDIFF(DAY, fecha, GETDATE()) = 0
+      WHERE corte_id IS NULL
     `);
 
     res.json(r.recordset[0]);
